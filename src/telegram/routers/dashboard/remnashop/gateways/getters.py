@@ -106,7 +106,7 @@ async def placement_getter(
     payment_gateway_dao: FromDishka[PaymentGatewayDao],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    gateways: list[PaymentGatewayDto] = await payment_gateway_dao.get_all()  # sorted=True
+    gateways: list[PaymentGatewayDto] = await payment_gateway_dao.get_all()
 
     formatted_gateways = [
         {

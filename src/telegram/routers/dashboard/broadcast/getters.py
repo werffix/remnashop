@@ -8,10 +8,9 @@ from dishka.integrations.aiogram_dialog import inject
 from src.application.common import TranslatorRunner
 from src.application.common.dao import BroadcastDao, PlanDao, SettingsDao
 from src.application.dto import PlanDto
-from src.core.config.app import AppConfig
+from src.application.services import BotService
 from src.core.constants import DATETIME_FORMAT
 from src.telegram.keyboards import get_goto_buttons
-from src.telegram.utils import username_to_url
 
 
 @inject
@@ -52,14 +51,13 @@ async def send_getter(
 @inject
 async def buttons_getter(
     dialog_manager: DialogManager,
-    config: AppConfig,
+    bot_service: FromDishka[BotService],
     settings_dao: FromDishka[SettingsDao],
     i18n: FromDishka[TranslatorRunner],
     **kwargs: Any,
 ) -> dict[str, Any]:
     buttons = dialog_manager.dialog_data.get("buttons", [])
     settings = await settings_dao.get()
-    support_username = config.bot.support_username.get_secret_value()
 
     if not buttons:
         buttons = [
@@ -70,8 +68,8 @@ async def buttons_getter(
             }
             for index, goto_button in enumerate(
                 get_goto_buttons(
-                    settings.referral.enable,
-                    username_to_url(support_username, i18n.get("message.help")),
+                    support_url=bot_service.get_support_url(text=i18n.get("message.help")),
+                    is_referral_enable=settings.referral.enable,
                 )
             )
         ]

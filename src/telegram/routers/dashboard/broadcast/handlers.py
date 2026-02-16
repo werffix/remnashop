@@ -16,6 +16,7 @@ from loguru import logger
 from src.application.common import Notifier, TranslatorRunner
 from src.application.common.dao import BroadcastDao, SettingsDao
 from src.application.dto import MediaDescriptorDto, MessagePayloadDto, UserDto
+from src.application.services import BotService
 from src.application.use_cases.broadcast import (
     CancelBroadcast,
     DeleteBroadcast,
@@ -24,12 +25,11 @@ from src.application.use_cases.broadcast import (
     StartBroadcast,
     StartBroadcastDto,
 )
-from src.core.config import AppConfig
 from src.core.constants import USER_KEY
 from src.core.enums import BroadcastAudience, MediaType
 from src.telegram.keyboards import get_goto_buttons
 from src.telegram.states import DashboardBroadcast
-from src.telegram.utils import is_double_click, username_to_url
+from src.telegram.utils import is_double_click
 
 
 def _update_payload(
@@ -191,7 +191,7 @@ async def on_button_select(
     callback: CallbackQuery,
     widget: Button,
     dialog_manager: DialogManager,
-    config: FromDishka[AppConfig],
+    bot_service: FromDishka[BotService],
     retort: FromDishka[Retort],
     i18n: FromDishka[TranslatorRunner],
     settings_dao: FromDishka[SettingsDao],
@@ -207,12 +207,10 @@ async def on_button_select(
             break
 
     settings = await settings_dao.get()
-    support_username = config.bot.support_username.get_secret_value()
-    text = i18n.get("message.help")
 
     goto_buttons = get_goto_buttons(
+        support_url=bot_service.get_support_url(text=i18n.get("message.help")),
         is_referral_enable=settings.referral.enable,
-        url=username_to_url(support_username, text),
     )
 
     builder = InlineKeyboardBuilder()

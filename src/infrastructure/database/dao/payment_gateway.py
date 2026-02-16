@@ -3,10 +3,12 @@ from typing import Any, Optional, cast
 from adaptix import Retort
 from adaptix.conversion import ConversionRetort
 from loguru import logger
+from pydantic import SecretStr
 from redis.asyncio import Redis
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.common.cryptography import Cryptographer
 from src.application.common.dao import PaymentGatewayDao
 from src.application.dto import PaymentGatewayDto
 from src.core.enums import Currency, PaymentGatewayType
@@ -20,11 +22,13 @@ class PaymentGatewayDaoImpl(PaymentGatewayDao):
         retort: Retort,
         conversion_retort: ConversionRetort,
         redis: Redis,
+        cryptographer: Cryptographer,
     ) -> None:
         self.session = session
         self.retort = retort
         self.conversion_retort = conversion_retort
         self.redis = redis
+        self.cryptographer = cryptographer
 
         self._convert_to_dto = self.conversion_retort.get_converter(
             PaymentGateway,
@@ -118,8 +122,10 @@ class PaymentGatewayDaoImpl(PaymentGatewayDao):
             if isinstance(value, dict):
                 dumped = {}
                 for k, v in value.items():
-                    if isinstance(v, list):
-                        dumped[k] = [self.retort.dump(item) for item in v]
+                    if isinstance(v, SecretStr):
+                        dumped[k] = self.cryptographer.encrypt(v.get_secret_value())
+                    elif isinstance(v, list):
+                        dumped[k] = [self.retort.dump(item) for item in v]  # type: ignore[assignment]
                     else:
                         dumped = {k: self.retort.dump(v, Any) for k, v in value.items()}
                 values_to_update[key] = column.concat(dumped)

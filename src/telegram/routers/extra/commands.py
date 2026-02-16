@@ -8,7 +8,7 @@ from loguru import logger
 from src.application.common import Notifier, TranslatorRunner
 from src.application.common.dao import SettingsDao
 from src.application.dto import MessagePayloadDto, UserDto
-from src.core.config import AppConfig
+from src.application.services import BotService
 from src.core.enums import Command
 from src.telegram.keyboards import get_contact_support_keyboard
 
@@ -20,20 +20,18 @@ router = Router(name=__name__)
 async def on_paysupport_command(
     message: Message,
     user: UserDto,
-    config: AppConfig,
+    bot_service: FromDishka[BotService],
     i18n: FromDishka[TranslatorRunner],
     notifier: FromDishka[Notifier],
 ) -> None:
     logger.info(f"{user.log} Called '/paysupport' command")
-
-    text = i18n.get("message.paysupport")
-    support_username = config.bot.support_username.get_secret_value()
+    support_url = bot_service.get_support_url(text=i18n.get("message.paysupport"))
 
     await notifier.notify_user(
         user=user,
         payload=MessagePayloadDto(
             i18n_key="ntf-command.paysupport",
-            reply_markup=get_contact_support_keyboard(support_username, text),
+            reply_markup=get_contact_support_keyboard(support_url),
             delete_after=False,
         ),
     )
@@ -54,7 +52,7 @@ async def on_rules_command(
         user=user,
         payload=MessagePayloadDto(
             i18n_key="ntf-command.rules",
-            i18n_kwargs={"url": settings.requirements.rules_link.get_secret_value()},
+            i18n_kwargs={"url": settings.requirements.rules_url},
             delete_after=False,
         ),
     )
@@ -65,20 +63,18 @@ async def on_rules_command(
 async def on_help_command(
     message: Message,
     user: UserDto,
-    config: AppConfig,
+    bot_service: FromDishka[BotService],
     i18n: FromDishka[TranslatorRunner],
     notifier: FromDishka[Notifier],
 ) -> None:
     logger.info(f"{user.log} Called '/help' command")
-
-    text = i18n.get("message.help")
-    support_username = config.bot.support_username.get_secret_value()
+    support_url = bot_service.get_support_url(text=i18n.get("message.help"))
 
     await notifier.notify_user(
         user=user,
         payload=MessagePayloadDto(
             i18n_key="ntf-command.help",
-            reply_markup=get_contact_support_keyboard(support_username, text),
+            reply_markup=get_contact_support_keyboard(support_url),
             delete_after=False,
         ),
     )

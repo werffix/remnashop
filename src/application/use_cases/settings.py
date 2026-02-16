@@ -155,7 +155,7 @@ class UpdateRulesRequirement(Interactor[str, bool]):
         input_text = input_text.strip()
 
         if not is_valid_url(input_text):
-            logger.warning(f"{actor.log} Provided invalid rules link format: '{input_text}'")
+            logger.warning(f"{actor.log} Provided invalid rules url format: '{input_text}'")
             await self.notifier.notify_user(actor, i18n_key="ntf-common.invalid-value")
             return False
 
@@ -166,7 +166,7 @@ class UpdateRulesRequirement(Interactor[str, bool]):
             await self.settings_dao.update(settings)
             await self.uow.commit()
 
-        logger.info(f"{actor.log} Successfully updated rules link")
+        logger.info(f"{actor.log} Successfully updated rules url")
         await self.notifier.notify_user(actor, i18n_key="ntf-common.value-updated")
         return True
 

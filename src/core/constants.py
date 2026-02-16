@@ -21,6 +21,7 @@ PAYMENTS_WEBHOOK_PATH: Final[str] = "/payments"
 REMNAWAVE_WEBHOOK_PATH: Final[str] = "/remnawave"
 
 IMPORTED_TAG: Final[str] = "IMPORTED"
+INLINE_QUERY_INVITE: Final[str] = "invite"
 DEEPLINK_PREFIX: Final[str] = "?start="
 REMNASHOP_PREFIX: Final[str] = "rs_"
 PAYMENT_PREFIX: Final[str] = "payment_"

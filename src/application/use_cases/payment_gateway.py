@@ -1,6 +1,6 @@
 import uuid
 from dataclasses import dataclass
-from typing import Final, Optional
+from typing import Any, Final, Optional
 from uuid import UUID
 
 from loguru import logger
@@ -125,9 +125,9 @@ class UpdatePaymentGatewaySettings(Interactor[UpdatePaymentGatewaySettingsDto, N
             if not gateway or not gateway.settings:
                 raise GatewayNotConfiguredError(f"Gateway '{data.gateway_id}' is not configured")
             try:
-                value = data.value
-                if data.field_name in ["api_key", "secret_key"] and isinstance(value, str):
-                    new_value = SecretStr(value)
+                new_value: Any = data.value
+                if data.field_name in ["api_key", "secret_key"] and isinstance(new_value, str):
+                    new_value = SecretStr(new_value)
 
                 setattr(gateway.settings, data.field_name, new_value)
 

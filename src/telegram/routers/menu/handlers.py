@@ -2,9 +2,20 @@ from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
+from aiogram_dialog.widgets.kbd import Button
+from dishka import FromDishka
+from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
 
-from src.application.dto import UserDto
+from src.application.common import Notifier, TranslatorRunner
+from src.application.common.dao import SettingsDao, SubscriptionDao
+from src.application.dto import MediaDescriptorDto, MessagePayloadDto, UserDto
+from src.application.services import BotService
+from src.application.use_cases.referral import GenerateReferralQr
+from src.core.constants import USER_KEY
+from src.core.enums import MediaType
+from src.core.utils.i18n_helpers import i18n_format_expire_time
+from src.core.utils.time import get_traffic_reset_delta
 from src.telegram.keyboards import CALLBACK_CHANNEL_CONFIRM, CALLBACK_RULES_ACCEPT
 from src.telegram.states import MainMenu
 
@@ -41,3 +52,81 @@ async def on_channel_confirm(
     dialog_manager: DialogManager,
 ) -> None:
     await on_start_dialog(user, dialog_manager)
+
+
+@inject
+async def show_reason(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    i18n: FromDishka[TranslatorRunner],
+    subscription_dao: FromDishka[SubscriptionDao],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    subscription = await subscription_dao.get_current(user.telegram_id)
+
+    if subscription:
+        kwargs = {
+            "status": subscription.current_status,
+            "is_trial": subscription.is_trial,
+            "traffic_strategy": subscription.traffic_limit_strategy,
+            "reset_time": i18n_format_expire_time(
+                get_traffic_reset_delta(subscription.traffic_limit_strategy)
+            ),
+        }
+    else:
+        kwargs = {"status": False}
+
+    await callback.answer(
+        text=i18n.get("ntf-common.connect-not-available", **kwargs),
+        show_alert=True,
+    )
+
+
+@inject
+async def on_show_qr(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    bot_service: FromDishka[BotService],
+    generate_referral_qr: FromDishka[GenerateReferralQr],
+    notifier: FromDishka[Notifier],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+
+    referral_url = await bot_service.get_referral_url(user.referral_code)
+    referral_qr = await generate_referral_qr.system(referral_url)
+
+    await notifier.notify_user(
+        user=user,
+        payload=MessagePayloadDto(
+            i18n_key="",
+            media=MediaDescriptorDto(kind="bytes", value=referral_qr, filename="qr.png"),
+            media_type=MediaType.PHOTO,
+            disable_default_markup=False,
+            delete_after=None,
+        ),
+    )
+
+
+@inject
+async def on_withdraw_points(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    i18n: FromDishka[TranslatorRunner],
+) -> None:
+    await callback.answer(text=i18n.get("ntf-common.withdraw-points"), show_alert=True)
+
+
+@inject
+async def on_invite(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    settings_dao: FromDishka[SettingsDao],
+) -> None:
+    settings = await settings_dao.get()
+    if settings.referral.enable:
+        await dialog_manager.switch_to(state=MainMenu.INVITE)
+    return

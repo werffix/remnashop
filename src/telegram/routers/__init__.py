@@ -12,6 +12,7 @@ def setup_routers(router: Router) -> None:
         extra.commands.router,
         extra.member.router,
         extra.goto.router,
+        extra.inline.router,
         #
         menu.handlers.router,
         menu.dialog.router,

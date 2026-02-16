@@ -134,7 +134,7 @@ class AcceptRules(Interactor[None, None]):
 class CheckRulesResultDto:
     is_required: bool
     is_accepted: bool
-    rules_link: Optional[str] = None
+    rules_url: Optional[str] = None
 
 
 class CheckRules(Interactor[None, CheckRulesResultDto]):
@@ -154,14 +154,14 @@ class CheckRules(Interactor[None, CheckRulesResultDto]):
             logger.debug(f"Rules check skipped for '{actor.telegram_id}': requirement is disabled")
             return CheckRulesResultDto(is_required=False, is_accepted=True)
 
-        rules_link = settings.requirements.rules_link.get_secret_value()
+        rules_url = settings.requirements.rules_url
 
         if actor.is_rules_accepted:
             logger.debug(f"User '{actor.telegram_id}' has already accepted rules")
-            return CheckRulesResultDto(is_required=True, is_accepted=True, rules_link=rules_link)
+            return CheckRulesResultDto(is_required=True, is_accepted=True, rules_url=rules_url)
 
         logger.debug(f"User '{actor.telegram_id}' must accept rules before proceeding")
-        return CheckRulesResultDto(is_required=True, is_accepted=False, rules_link=rules_link)
+        return CheckRulesResultDto(is_required=True, is_accepted=False, rules_url=rules_url)
 
 
 @dataclass(frozen=True)

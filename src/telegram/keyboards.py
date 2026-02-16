@@ -10,7 +10,6 @@ from magic_filter import F
 from src.core.constants import GOTO_PREFIX, PAYMENT_PREFIX, REPOSITORY, T_ME
 from src.core.enums import ButtonType, PurchaseType
 from src.telegram.states import DashboardUser, MainMenu, Subscription
-from src.telegram.utils import username_to_url
 from src.telegram.widgets import I18nFormat
 
 CALLBACK_CHANNEL_CONFIRM: Final[str] = "channel_confirm"
@@ -86,11 +85,11 @@ back_main_menu_button = (
 )
 
 
-def get_goto_buttons(is_referral_enable: bool, url: str) -> list[InlineKeyboardButton]:
+def get_goto_buttons(support_url: str, is_referral_enable: bool) -> list[InlineKeyboardButton]:
     buttons = [
         InlineKeyboardButton(
             text="btn-goto.contact-support",
-            url=url,
+            url=support_url,
         ),
         InlineKeyboardButton(
             text="btn-goto.subscription",
@@ -135,12 +134,12 @@ def get_buy_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def get_channel_keyboard(channel_link: str) -> InlineKeyboardMarkup:
+def get_channel_keyboard(channel_url: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
             text="btn-requirement.channel-join",
-            url=channel_link,
+            url=channel_url,
         ),
     )
     builder.row(
@@ -163,14 +162,9 @@ def get_rules_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def get_contact_support_keyboard(username: str, text: str) -> InlineKeyboardMarkup:
+def get_contact_support_keyboard(support_url: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(
-            text="btn-goto.contact-support",
-            url=username_to_url(username, text),
-        ),
-    )
+    builder.row(InlineKeyboardButton(text="btn-goto.contact-support", url=support_url))
     return builder.as_markup()
 
 
@@ -178,14 +172,8 @@ def get_remnashop_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     builder.row(
-        InlineKeyboardButton(
-            text="btn-remnashop-info.github",
-            url=REPOSITORY,
-        ),
-        InlineKeyboardButton(
-            text="btn-remnashop-info.telegram",
-            url=f"{T_ME}remna_shop",
-        ),
+        InlineKeyboardButton(text="btn-remnashop-info.github", url=REPOSITORY),
+        InlineKeyboardButton(text="btn-remnashop-info.telegram", url=f"{T_ME}remna_shop"),
     )
 
     builder.row(

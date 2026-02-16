@@ -44,7 +44,7 @@ class RulesMiddleware(EventTypedMiddleware):
                 user=user,
                 payload=MessagePayloadDto(
                     i18n_key="ntf-requirement.rules-accept-required",
-                    i18n_kwargs={"url": result.rules_link},
+                    i18n_kwargs={"url": result.rules_url},
                     reply_markup=get_rules_keyboard(),
                     delete_after=None,
                 ),

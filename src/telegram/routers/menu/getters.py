@@ -5,7 +5,9 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from src.application.common import TranslatorRunner
+from src.application.common.dao import ReferralDao, SettingsDao
 from src.application.dto import UserDto
+from src.application.services import BotService
 from src.application.use_cases.menu import GetMenuData
 from src.core.config import AppConfig
 from src.core.exceptions import MenuRenderError
@@ -15,7 +17,6 @@ from src.core.utils.i18n_helpers import (
     i18n_format_traffic_limit,
 )
 from src.core.utils.time import get_traffic_reset_delta
-from src.telegram.utils import username_to_url
 
 
 @inject
@@ -23,15 +24,14 @@ async def menu_getter(
     dialog_manager: DialogManager,
     config: AppConfig,
     user: UserDto,
+    bot_service: FromDishka[BotService],
     i18n: FromDishka[TranslatorRunner],
     get_menu_data: FromDishka[GetMenuData],
     **kwargs: Any,
 ) -> dict[str, Any]:
     try:
         menu_data = await get_menu_data(user)
-
-        support_username = config.bot.support_username.get_secret_value()
-        support_url = username_to_url(support_username, i18n.get("message.help"))
+        support_url = bot_service.get_support_url(text=i18n.get("message.help"))
 
         data: dict[str, Any] = {
             # user
@@ -43,7 +43,6 @@ async def menu_getter(
             "support_url": support_url,
             # referral
             "referral_enabled": menu_data.is_referral_enabled,
-            "invite_url": i18n.get("message.referral-invite", url=menu_data.referral_url),
             # defaults
             "has_subscription": False,
             "connectable": False,
@@ -93,3 +92,67 @@ async def menu_getter(
 
     except Exception as e:
         raise MenuRenderError(str(e)) from e
+
+
+@inject
+async def invite_getter(
+    dialog_manager: DialogManager,
+    user: UserDto,
+    bot_service: FromDishka[BotService],
+    i18n: FromDishka[TranslatorRunner],
+    settings_dao: FromDishka[SettingsDao],
+    referral_dao: FromDishka[ReferralDao],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    settings = await settings_dao.get()
+    referrals = await referral_dao.get_referrals_count(user.telegram_id)
+    payments = await referral_dao.get_total_rewards_amount(
+        user.telegram_id,
+        settings.referral.reward.type,
+    )
+    referral_url = await bot_service.get_referral_url(user.referral_code)
+    support_url = bot_service.get_support_url(text=i18n.get("message.withdraw-points"))
+
+    return {
+        "reward_type": settings.referral.reward.type,
+        "referrals": referrals,
+        "payments": payments,
+        "points": user.points,
+        "is_points_reward": settings.referral.reward.is_points,
+        "has_points": True if user.points > 0 else False,
+        "referral_url": referral_url,
+        "withdraw": support_url,
+    }
+
+
+@inject
+async def invite_about_getter(
+    dialog_manager: DialogManager,
+    i18n: FromDishka[TranslatorRunner],
+    settings_dao: FromDishka[SettingsDao],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    settings = await settings_dao.get()
+    reward_config = settings.referral.reward.config
+
+    max_level = settings.referral.level.value
+    identical_reward = settings.referral.reward.is_identical
+
+    reward_levels: dict[str, str] = {}
+    for lvl, val in reward_config.items():
+        if lvl.value <= max_level:
+            reward_levels[f"reward_level_{lvl.value}"] = i18n.get(
+                "msg-invite-reward",
+                value=val,
+                reward_strategy_type=settings.referral.reward.strategy,
+                reward_type=settings.referral.reward.type,
+            )
+
+    return {
+        **reward_levels,
+        "reward_type": settings.referral.reward.type,
+        "reward_strategy_type": settings.referral.reward.strategy,
+        "accrual_strategy": settings.referral.accrual_strategy,
+        "identical_reward": identical_reward,
+        "max_level": max_level,
+    }

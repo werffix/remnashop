@@ -49,15 +49,19 @@ class RequirementSettingsDto(TrackableMixin):
     channel_link: SecretStr = SecretStr("@remna_shop")
 
     @property
+    def rules_url(self) -> str:
+        return self.rules_link.get_secret_value()
+
+    @property
     def channel_has_username(self) -> bool:
         return self.channel_link.get_secret_value().startswith("@")
 
     @property
     def channel_url(self) -> str:
-        link = self.channel_link.get_secret_value()
+        url = self.channel_link.get_secret_value()
         if self.channel_has_username:
-            return f"{T_ME}{link[1:]}"
-        return link
+            return f"{T_ME}{url[1:]}"
+        return url
 
 
 @dataclass(kw_only=True)

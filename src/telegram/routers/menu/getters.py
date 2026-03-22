@@ -98,6 +98,21 @@ async def menu_getter(
         raise MenuRenderError(str(e)) from e
 
 
+PLATFORM_ICONS = {
+    "ios": "🍎",
+    "android": "🤖",
+    "windows": "🖥️",
+    "macos": "💻",
+    "linux": "🐧",
+    "router": "📡",
+    "tv": "📺",
+}
+
+
+def get_platform_icon(platform: str) -> str:
+    return PLATFORM_ICONS.get(platform.lower(), "📱")
+
+
 @inject
 async def devices_getter(
     dialog_manager: DialogManager,
@@ -120,6 +135,7 @@ async def devices_getter(
             "platform": device.platform,
             "device_model": device.device_model,
             "user_agent": device.user_agent,
+            "label": f"{get_platform_icon(device.platform)} {device.platform} ({device.device_model})",
         }
         for device in devices
     ]
@@ -131,7 +147,18 @@ async def devices_getter(
         "max_count": i18n_format_device_limit(current_subscription.device_limit),
         "devices": formatted_devices,
         "devices_empty": len(devices) == 0,
+        "has_devices": len(devices) > 0,
     }
+
+
+@inject
+async def device_confirm_delete_getter(
+    dialog_manager: DialogManager,
+    user: UserDto,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    selected_label = dialog_manager.dialog_data.get("selected_device_label", "")
+    return {"selected_device_label": selected_label}
 
 
 @inject

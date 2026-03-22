@@ -151,3 +151,8 @@ ntf-sync =
 
 ntf-menu-editor =
     .button-saved = ✅ <i>Кнопка успешно сохранена.</i>
+
+ntf-devices =
+    .deleted = ✅ Устройство удалено
+    .all-deleted = ✅ Все устройства удалены
+    .reissued = ✅ Подписка успешно перевыпущена

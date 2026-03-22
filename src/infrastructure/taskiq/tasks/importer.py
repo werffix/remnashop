@@ -96,7 +96,7 @@ async def sync_all_users_from_panel_task(
                     missing_telegram += 1
                     continue
 
-                user = bot_users_map.get(remna_user.telegram_id)
+                user = bot_users_map.get(int(remna_user.telegram_id))
 
                 if not user:
                     await sync_remna_user.system(SyncRemnaUserDto(remna_user, True))

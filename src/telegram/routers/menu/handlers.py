@@ -139,7 +139,7 @@ async def on_device_delete_all_confirm(
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     await delete_user_all_devices(user)
-    await notifier.notify_user(user=user, i18n_key="ntf-devices.all-delete")
+    await notifier.notify_user(user=user, i18n_key="ntf-devices.all-deleted")
     await dialog_manager.switch_to(state=MainMenu.DEVICES)
 
 

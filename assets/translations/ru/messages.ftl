@@ -646,7 +646,7 @@ msg-user-message =
 
 # RemnaWave
 msg-remnawave-main =
-    <b>🌊 RemnaWave</b>
+    <b>🌊 RemnaWave v{ $version }</b>
     
     <b>🖥️ Система:</b>
     <blockquote>

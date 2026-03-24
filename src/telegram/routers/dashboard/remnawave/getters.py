@@ -4,6 +4,7 @@ from aiogram_dialog import DialogManager
 from aiogram_dialog.widgets.common import ManagedScroll
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
+from loguru import logger
 from remnapy import RemnawaveSDK
 
 from src.application.common import TranslatorRunner
@@ -18,9 +19,16 @@ async def system_getter(
     **kwargs: Any,
 ) -> dict[str, Any]:
     result = await remnawave_sdk.system.get_stats()
+    metadata = None
+
+    # for compatibility with older versions of Remnawave, where the metadata endpoint might not be available
+    try:
+        metadata = await remnawave_sdk.system.get_metadata()
+    except Exception as e:
+        logger.error(f"Error occurred while fetching metadata: {e}")
 
     return {
-        "version": "",  # TODO: Add panel version
+        "version": metadata.version if metadata else "",
         "cpu_cores": result.cpu.physical_cores,
         "cpu_threads": result.cpu.cores,
         "ram_used": i18n_format_bytes_to_unit(result.memory.active),

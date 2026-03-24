@@ -25,6 +25,10 @@ async def check_bot_update(
     redis: FromDishka[Redis],
     event_publisher: FromDishka[EventPublisher],
 ) -> None:
+    if not config.build.tag or config.build.tag == "dev":
+        logger.debug("Local version is a development build, skipping update check")
+        return
+
     local_version = config.build.tag.replace("v", "") if config.build.tag else None
 
     if not local_version:

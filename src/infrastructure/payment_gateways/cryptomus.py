@@ -13,18 +13,18 @@ from fastapi import Request
 from httpx import AsyncClient, HTTPStatusError
 from loguru import logger
 
-from src.core.config import AppConfig
-from src.core.enums import Currency, TransactionStatus
-from src.infrastructure.database.models.dto import (
+from src.application.dto import PaymentGatewayDto, PaymentResultDto
+from src.application.dto.payment_gateway import (
     CryptomusGatewaySettingsDto,
     HeleketGatewaySettingsDto,
-    PaymentGatewayDto,
-    PaymentResult,
 )
+from src.core.config import AppConfig
+from src.core.enums import Currency, TransactionStatus
 
 from .base import BasePaymentGateway
 
 
+# https://doc.cryptomus.com/
 class CryptomusGateway(BasePaymentGateway):
     _client: AsyncClient
 
@@ -49,9 +49,10 @@ class CryptomusGateway(BasePaymentGateway):
             headers={"merchant": self.data.settings.merchant_id},  # type: ignore[dict-item]
         )
 
-    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResult:
+    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
         payload = await self._create_payment_payload(str(amount), str(uuid.uuid4()))
         headers = {"sign": self._generate_signature(json.dumps(payload))}
+        logger.debug(f"Creating payment payload: {payload}")
 
         try:
             response = await self._client.post("v1/payment", json=payload, headers=headers)
@@ -59,17 +60,17 @@ class CryptomusGateway(BasePaymentGateway):
             data = orjson.loads(response.content).get("result", {})
             return self._get_payment_data(data)
 
-        except HTTPStatusError as exception:
+        except HTTPStatusError as e:
             logger.error(
                 f"HTTP error creating payment. "
-                f"Status: '{exception.response.status_code}', Body: {exception.response.text}"
+                f"Status: '{e.response.status_code}', Body: {e.response.text}"
             )
             raise
-        except (KeyError, orjson.JSONDecodeError) as exception:
-            logger.error(f"Failed to parse response. Error: {exception}")
+        except (KeyError, orjson.JSONDecodeError) as e:
+            logger.error(f"Failed to parse response. Error: {e}")
             raise
-        except Exception as exception:
-            logger.exception(f"An unexpected error occurred while creating payment: {exception}")
+        except Exception as e:
+            logger.exception(f"An unexpected error occurred while creating payment: {e}")
             raise
 
     async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
@@ -114,7 +115,7 @@ class CryptomusGateway(BasePaymentGateway):
         raw_string = f"{base64_encoded}{self.data.settings.api_key.get_secret_value()}"  # type: ignore[union-attr]
         return hashlib.md5(raw_string.encode()).hexdigest()
 
-    def _get_payment_data(self, data: dict[str, Any]) -> PaymentResult:
+    def _get_payment_data(self, data: dict[str, Any]) -> PaymentResultDto:
         payment_id_str = data.get("order_id")
 
         if not payment_id_str:
@@ -125,7 +126,7 @@ class CryptomusGateway(BasePaymentGateway):
         if not payment_url:
             raise KeyError("Invalid response from API: missing 'url'")
 
-        return PaymentResult(id=UUID(payment_id_str), url=str(payment_url))
+        return PaymentResultDto(id=UUID(payment_id_str), url=str(payment_url))
 
     def _verify_webhook(self, request: Request, data: dict) -> bool:
         ip = self._get_ip(request.headers)

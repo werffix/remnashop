@@ -12,7 +12,7 @@ from .validators import validate_not_change_me, validate_username
 class BotConfig(BaseConfig, env_prefix="BOT_"):
     token: SecretStr
     secret_token: SecretStr
-    dev_id: int
+    owner_id: int
     support_username: SecretStr
     mini_app: Union[bool, SecretStr] = False
 

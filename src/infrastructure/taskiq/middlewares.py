@@ -1,12 +1,13 @@
-import traceback
-from typing import Any
+from typing import Any, Optional
 
-from aiogram.utils.formatting import Text
+from dishka import AsyncContainer
 from loguru import logger
 from taskiq import TaskiqMessage, TaskiqResult
 from taskiq.abc.middleware import TaskiqMiddleware
 
-from src.core.utils.message_payload import MessagePayload
+from src.application.common import EventPublisher
+from src.application.events import ErrorEvent
+from src.core.config import AppConfig
 
 
 class ErrorMiddleware(TaskiqMiddleware):
@@ -17,24 +18,19 @@ class ErrorMiddleware(TaskiqMiddleware):
         exception: BaseException,
     ) -> None:
         logger.error(f"Task '{message.task_name}' error: {exception}")
-        from src.infrastructure.taskiq.tasks.notifications import (  # noqa: PLC0415
-            send_error_notification_task,
+
+        container: Optional[AsyncContainer] = self.broker.custom_dependency_context.get(
+            AsyncContainer
         )
 
-        traceback_str = "".join(
-            traceback.format_exception(type(exception), exception, exception.__traceback__)
-        )
-        error_type_name = type(exception).__name__
-        error_message = Text(str(exception)[:512])
+        if not container:
+            logger.error("Dishka container not found in taskiq broker context")
+            return
 
-        await send_error_notification_task.kiq(
-            error_id=message.task_id,
-            traceback_str=traceback_str,
-            payload=MessagePayload.not_deleted(
-                i18n_key="ntf-event-error",
-                i18n_kwargs={
-                    "user": False,
-                    "error": f"{error_type_name}: {error_message.as_html()}",
-                },
-            ),
-        )
+        try:
+            config = await container.get(AppConfig)
+            event_publisher = await container.get(EventPublisher)
+            error_event = ErrorEvent(**config.build.data, exception=exception)
+            await event_publisher.publish(error_event)
+        except Exception as e:
+            logger.error(f"Failed to publish error event: {e}")

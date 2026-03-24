@@ -1,7 +1,6 @@
 from enum import Enum, IntEnum, StrEnum, auto
-from typing import Any, Callable, Union
+from typing import Self, Union
 
-from aiogram import Bot
 from aiogram.types import BotCommand, ContentType
 
 
@@ -11,24 +10,10 @@ class UpperStrEnum(StrEnum):
         return name
 
 
-class ReferralRewardType(UpperStrEnum):
-    POINTS = auto()
-    EXTRA_DAYS = auto()
-
-
-class ReferralLevel(IntEnum):
-    FIRST = auto()
-    SECOND = auto()
-
-
-class ReferralAccrualStrategy(UpperStrEnum):
-    ON_FIRST_PAYMENT = auto()
-    ON_EACH_PAYMENT = auto()
-
-
-class ReferralRewardStrategy(UpperStrEnum):
-    AMOUNT = auto()
-    PERCENT = auto()
+class ButtonType(UpperStrEnum):
+    URL = auto()
+    COPY = auto()
+    WEB_APP = auto()
 
 
 class BroadcastStatus(UpperStrEnum):
@@ -56,6 +41,38 @@ class BroadcastAudience(UpperStrEnum):
     TRIAL = auto()
 
 
+class PlanType(UpperStrEnum):
+    TRAFFIC = auto()
+    DEVICES = auto()
+    BOTH = auto()
+    UNLIMITED = auto()
+
+
+class PlanAvailability(UpperStrEnum):
+    ALL = auto()
+    NEW = auto()
+    EXISTING = auto()
+    INVITED = auto()
+    ALLOWED = auto()
+    LINK = auto()
+
+
+class PaymentGatewayType(UpperStrEnum):
+    TELEGRAM_STARS = auto()
+    YOOKASSA = auto()
+    YOOMONEY = auto()
+    CRYPTOMUS = auto()
+    HELEKET = auto()
+    CRYPTOPAY = auto()
+    FREEKASSA = auto()
+    MULENPAY = auto()
+    PAYMASTER = auto()
+    PLATEGA = auto()
+    ROBOKASSA = auto()
+    URLPAY = auto()
+    WATA = auto()
+
+
 class PurchaseType(UpperStrEnum):
     NEW = auto()
     RENEW = auto()
@@ -78,13 +95,24 @@ class SubscriptionStatus(UpperStrEnum):
     DELETED = auto()
 
 
-class MessageEffect(UpperStrEnum):
-    FIRE = "5104841245755180586"  #     🔥
-    LIKE = "5107584321108051014"  #     👍
-    DISLIKE = "5104858069142078462"  #  👎
-    LOVE = "5159385139981059251"  #     ❤️
-    CONFETTI = "5046509860389126442"  # 🎉
-    POOP = "5046589136895476101"  #     💩
+class ReferralRewardType(UpperStrEnum):
+    POINTS = auto()
+    EXTRA_DAYS = auto()
+
+
+class ReferralLevel(IntEnum):
+    FIRST = auto()
+    SECOND = auto()
+
+
+class ReferralAccrualStrategy(UpperStrEnum):
+    ON_FIRST_PAYMENT = auto()
+    ON_EACH_PAYMENT = auto()
+
+
+class ReferralRewardStrategy(UpperStrEnum):
+    AMOUNT = auto()
+    PERCENT = auto()
 
 
 class BannerName(StrEnum):
@@ -105,11 +133,30 @@ class BannerFormat(StrEnum):
 
     @property
     def content_type(self) -> ContentType:
-        match self:
-            case BannerFormat.JPG | BannerFormat.JPEG | BannerFormat.PNG | BannerFormat.WEBP:
-                return ContentType.PHOTO
-            case BannerFormat.GIF:
-                return ContentType.ANIMATION
+        if self == self.GIF:
+            return ContentType.ANIMATION
+        else:
+            return ContentType.PHOTO
+
+
+class MessageEffectId(StrEnum):
+    # 👍 Thumbs Up
+    THUMBS_UP = "5107584321108051014"
+
+    # 👎 Thumbs Down
+    THUMBS_DOWN = "5104858069142078462"
+
+    # ❤️ Heart
+    HEART = "5159385139981059251"
+
+    # 🔥 Fire
+    FIRE = "5104841245755180586"
+
+    # 🎉 Party Popper
+    PARTY = "5046509860389126442"
+
+    # 💩 Pile of Poo
+    POOP = "5046589136895476101"
 
 
 class MediaType(UpperStrEnum):
@@ -117,113 +164,66 @@ class MediaType(UpperStrEnum):
     VIDEO = auto()
     DOCUMENT = auto()
 
-    def get_function(self, bot_instance: Bot) -> Callable[..., Any]:
-        match self:
-            case MediaType.PHOTO:
-                return bot_instance.send_photo
-            case MediaType.VIDEO:
-                return bot_instance.send_video
-            case MediaType.DOCUMENT:
-                return bot_instance.send_document
+
+class Role(IntEnum):
+    USER = auto()
+    PREVIEW = auto()
+    ADMIN = auto()
+    DEV = auto()
+    OWNER = auto()
+    SYSTEM = auto()
+
+    def __str__(self) -> str:
+        return self.name
+
+    def includes(self, other: "Role") -> bool:
+        return self >= other
+
+    def get_subordinates(self) -> list["Role"]:
+        return [r for r in Role if self > r and r > Role.USER]
 
 
-class SystemNotificationType(UpperStrEnum):  # == SystemNotificationDto
-    BOT_LIFETIME = auto()
+class SystemNotificationType(UpperStrEnum):
+    SYSTEM = auto()
+    #
+    BOT_LIFECYCLE = auto()
     BOT_UPDATE = auto()
     #
     USER_REGISTERED = auto()
     SUBSCRIPTION = auto()
     PROMOCODE_ACTIVATED = auto()
-    TRIAL_GETTED = auto()
+    TRIAL_ACTIVATED = auto()
     #
-    NODE_STATUS = auto()
-    USER_FIRST_CONNECTED = auto()
-    USER_HWID = auto()
+    NODE_STATUS_CHANGED = auto()
+    NODE_TRAFFIC_REACHED = auto()
+    #
+    USER_FIRST_CONNECTION = auto()
+    USER_DEVICES_UPDATED = auto()
+    USER_REVOKED_SUBSCRIPTION = auto()
 
 
-class UserNotificationType(UpperStrEnum):  # == UserNotificationDto
+class UserNotificationType(UpperStrEnum):
     EXPIRES_IN_3_DAYS = auto()
     EXPIRES_IN_2_DAYS = auto()
-    EXPIRES_IN_1_DAYS = auto()
+    EXPIRES_IN_1_DAY = auto()
+    #
     EXPIRED = auto()
-    LIMITED = auto()
     EXPIRED_1_DAY_AGO = auto()
+    LIMITED = auto()
     #
     REFERRAL_ATTACHED = auto()
-    REFERRAL_REWARD = auto()
+    REFERRAL_REWARD_RECEIVED = auto()
 
 
-class UserRoleHierarchy(Enum):
-    DEV = 3
-    ADMIN = 2
-    USER = 1
+class AccessMode(UpperStrEnum):
+    PUBLIC = auto()  # Access is allowed for everyone
+    INVITED = auto()  # Invited users only
+    RESTRICTED = auto()  # All actions are completely forbidden
 
 
-class UserRole(UpperStrEnum):
-    DEV = auto()
-    ADMIN = auto()
-    USER = auto()
-
-    def __le__(self, other: Union["UserRole", str]) -> bool:
-        if isinstance(other, UserRole):
-            other_name = other.name
-        elif isinstance(other, str):
-            other_name = other
-        else:
-            raise TypeError(f"Cannot compare UserRole with '{type(other)}'")
-        return UserRoleHierarchy[self.name].value <= UserRoleHierarchy[other_name].value
-
-    def __lt__(self, other: Union["UserRole", str]) -> bool:
-        if isinstance(other, UserRole):
-            other_name = other.name
-        elif isinstance(other, str):
-            other_name = other
-        else:
-            raise TypeError(f"Cannot compare UserRole with '{type(other)}'")
-        return UserRoleHierarchy[self.name].value < UserRoleHierarchy[other_name].value
-
-
-class PromocodeRewardType(UpperStrEnum):
-    DURATION = auto()
-    TRAFFIC = auto()
-    DEVICES = auto()
-    SUBSCRIPTION = auto()
-    PERSONAL_DISCOUNT = auto()
-    PURCHASE_DISCOUNT = auto()
-
-
-class PlanType(UpperStrEnum):
-    TRAFFIC = auto()
-    DEVICES = auto()
-    BOTH = auto()
-    UNLIMITED = auto()
-
-
-class PlanAvailability(UpperStrEnum):
-    ALL = auto()
-    NEW = auto()
-    EXISTING = auto()
-    INVITED = auto()
-    ALLOWED = auto()
-    TRIAL = auto()
-
-
-class PromocodeAvailability(UpperStrEnum):
-    ALL = auto()
-    NEW = auto()
-    EXISTING = auto()
-    INVITED = auto()
-    ALLOWED = auto()
-
-
-class PaymentGatewayType(UpperStrEnum):
-    TELEGRAM_STARS = auto()
-    YOOKASSA = auto()
-    YOOMONEY = auto()
-    CRYPTOMUS = auto()
-    HELEKET = auto()
-    CRYPTOPAY = auto()
-    ROBOKASSA = auto()
+class AccessRequirements(StrEnum):
+    RULES = auto()
+    CHANNEL = auto()
 
 
 class Currency(UpperStrEnum):
@@ -234,15 +234,15 @@ class Currency(UpperStrEnum):
     @property
     def symbol(self) -> str:
         symbols = {
-            "USD": "$",
-            "XTR": "★",
-            "RUB": "₽",
+            self.USD: "$",
+            self.XTR: "★",
+            self.RUB: "₽",
         }
-        return symbols[self.value]
+        return symbols.get(self, "?")
 
     @classmethod
-    def from_code(cls, code: str) -> "Currency":
-        return cls(code)
+    def from_code(cls, code: str) -> Self:
+        return cls(code.upper())
 
     @classmethod
     def from_gateway_type(cls, gateway_type: PaymentGatewayType) -> "Currency":
@@ -250,10 +250,16 @@ class Currency(UpperStrEnum):
             PaymentGatewayType.TELEGRAM_STARS: cls.XTR,
             PaymentGatewayType.YOOKASSA: cls.RUB,
             PaymentGatewayType.YOOMONEY: cls.RUB,
-            PaymentGatewayType.ROBOKASSA: cls.RUB,
             PaymentGatewayType.CRYPTOMUS: cls.USD,
             PaymentGatewayType.HELEKET: cls.USD,
             PaymentGatewayType.CRYPTOPAY: cls.USD,
+            PaymentGatewayType.FREEKASSA: cls.RUB,
+            PaymentGatewayType.MULENPAY: cls.RUB,
+            PaymentGatewayType.PAYMASTER: cls.RUB,
+            PaymentGatewayType.PLATEGA: cls.RUB,
+            PaymentGatewayType.ROBOKASSA: cls.RUB,
+            PaymentGatewayType.URLPAY: cls.RUB,
+            PaymentGatewayType.WATA: cls.RUB,
         }
 
         try:
@@ -261,47 +267,31 @@ class Currency(UpperStrEnum):
         except KeyError:
             raise ValueError(f"Unknown payment gateway type: '{gateway_type}'")
 
-
-class AccessMode(UpperStrEnum):
-    PUBLIC = auto()  # Access is allowed for everyone
-    INVITED = auto()  # Invited users only
-    RESTRICTED = auto()  # All actions are completely forbidden
+    def amount(self, amount: Union[float, int]) -> str:
+        return f"{amount} {self.symbol}"
 
 
 class Command(Enum):
-    START = BotCommand(command="start", description="cmd-start")
-    PAYSUPPORT = BotCommand(command="paysupport", description="cmd-paysupport")
-    HELP = BotCommand(command="help", description="cmd-help")
+    START = BotCommand(command="start", description="command.start")
+    PAYSUPPORT = BotCommand(command="paysupport", description="command.paysupport")
+    RULES = BotCommand(command="rules", description="command.rules")
+    HELP = BotCommand(command="help", description="command.help")
 
 
-class Locale(StrEnum):
-    AR = auto()  # Arabic
-    AZ = auto()  # Azerbaijani
-    BE = auto()  # Belarusian
-    CS = auto()  # Czech
-    DE = auto()  # German
-    EN = auto()  # English
-    ES = auto()  # Spanish
-    FA = auto()  # Persian
-    FR = auto()  # French
-    HE = auto()  # Hebrew
-    HI = auto()  # Hindi
-    ID = auto()  # Indonesian
-    IT = auto()  # Italian
-    JA = auto()  # Japanese
-    KK = auto()  # Kazakh
-    KO = auto()  # Korean
-    MS = auto()  # Malay
-    NL = auto()  # Dutch
-    PL = auto()  # Polish
-    PT = auto()  # Portuguese
-    RO = auto()  # Romanian
-    RU = auto()  # Russian
-    SR = auto()  # Serbian
-    TR = auto()  # Turkish
-    UK = auto()  # Ukrainian
-    UZ = auto()  # Uzbek
-    VI = auto()  # Vietnamese
+# https://yookassa.ru/developers/payment-acceptance/receipts/54fz/yoomoney/parameters-values#vat-codes
+class YookassaVatCode(IntEnum):
+    VAT_CODE_01 = auto()  # Without VAT
+    VAT_CODE_02 = auto()  # VAT at 0% rate
+    VAT_CODE_03 = auto()  # VAT at 10% rate
+    VAT_CODE_04 = auto()  # VAT at 20% rate
+    VAT_CODE_05 = auto()  # VAT at calculated rate 10/110
+    VAT_CODE_06 = auto()  # VAT at calculated rate 20/120
+    VAT_CODE_07 = auto()  # VAT at 5% rate
+    VAT_CODE_08 = auto()  # VAT at 7% rate
+    VAT_CODE_09 = auto()  # VAT at calculated rate 5/105
+    VAT_CODE_10 = auto()  # VAT at calculated rate 7/107
+    VAT_CODE_11 = auto()  # VAT at 22% rate
+    VAT_CODE_12 = auto()  # VAT at calculated rate 22/122
 
 
 # https://docs.aiogram.dev/en/latest/api/types/update.html
@@ -334,50 +324,42 @@ class MiddlewareEventType(StrEnum):
     ERROR = auto()
 
 
-class RemnaUserEvent(StrEnum):
-    CREATED = "user.created"
-    MODIFIED = "user.modified"
-    DELETED = "user.deleted"
-    REVOKED = "user.revoked"
-    DISABLED = "user.disabled"
-    ENABLED = "user.enabled"
-    LIMITED = "user.limited"
-    EXPIRED = "user.expired"
-    TRAFFIC_RESET = "user.traffic_reset"
-    FIRST_CONNECTED = "user.first_connected"
-    BANDWIDTH_USAGE_THRESHOLD_REACHED = "user.bandwidth_usage_threshold_reached"
-
-    EXPIRES_IN_72_HOURS = "user.expires_in_72_hours"
-    EXPIRES_IN_48_HOURS = "user.expires_in_48_hours"
-    EXPIRES_IN_24_HOURS = "user.expires_in_24_hours"
-    EXPIRED_24_HOURS_AGO = "user.expired_24_hours_ago"
-
-
-class RemnaUserHwidDevicesEvent(StrEnum):
-    ADDED = "user_hwid_devices.added"
-    DELETED = "user_hwid_devices.deleted"
-
-
-class RemnaNodeEvent(StrEnum):
-    CREATED = "node.created"
-    MODIFIED = "node.modified"
-    DISABLED = "node.disabled"
-    ENABLED = "node.enabled"
-    DELETED = "node.deleted"
-    CONNECTION_LOST = "node.connection_lost"
-    CONNECTION_RESTORED = "node.connection_restored"
-    TRAFFIC_NOTIFY = "node.traffic_notify"
+class Locale(StrEnum):
+    AR = auto()  # Arabic
+    AZ = auto()  # Azerbaijani
+    BE = auto()  # Belarusian
+    CS = auto()  # Czech
+    DE = auto()  # German
+    EN = auto()  # English
+    ES = auto()  # Spanish
+    FA = auto()  # Persian
+    FR = auto()  # French
+    HE = auto()  # Hebrew
+    HI = auto()  # Hindi
+    ID = auto()  # Indonesian
+    IT = auto()  # Italian
+    JA = auto()  # Japanese
+    KK = auto()  # Kazakh
+    KO = auto()  # Korean
+    MS = auto()  # Malay
+    NL = auto()  # Dutch
+    PL = auto()  # Polish
+    PT = auto()  # Portuguese
+    RO = auto()  # Romanian
+    RU = auto()  # Russian
+    SR = auto()  # Serbian
+    TR = auto()  # Turkish
+    UK = auto()  # Ukrainian
+    UZ = auto()  # Uzbek
+    VI = auto()  # Vietnamese
 
 
-# https://yookassa.ru/developers/payment-acceptance/receipts/54fz/yoomoney/parameters-values#vat-codes
-class YookassaVatCode(IntEnum):
-    VAT_CODE_01 = auto()  # Without VAT
-    VAT_CODE_02 = auto()  # VAT at 0% rate
-    VAT_CODE_03 = auto()  # VAT at 10% rate
-    VAT_CODE_04 = auto()  # VAT at 20% rate
-    VAT_CODE_05 = auto()  # VAT at calculated rate 10/110
-    VAT_CODE_06 = auto()  # VAT at calculated rate 20/120
-    VAT_CODE_07 = auto()  # VAT at 5% rate
-    VAT_CODE_08 = auto()  # VAT at 7% rate
-    VAT_CODE_09 = auto()  # VAT at calculated rate 5/105
-    VAT_CODE_10 = auto()  # VAT at calculated rate 7/107
+class LogLevel(UpperStrEnum):
+    CRITICAL = auto()
+    FATAL = auto()
+    ERROR = auto()
+    WARN = auto()
+    WARNING = auto()
+    INFO = auto()
+    DEBUG = auto()
+    NOTSET = auto()

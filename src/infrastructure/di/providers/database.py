@@ -9,12 +9,15 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from src.application.common.uow import UnitOfWork
 from src.core.config import AppConfig
-from src.infrastructure.database import UnitOfWork
+from src.infrastructure.database import UnitOfWorkImpl
 
 
 class DatabaseProvider(Provider):
     scope = Scope.APP
+
+    uow = provide(source=UnitOfWorkImpl, provides=UnitOfWork, scope=Scope.REQUEST)
 
     @provide
     async def get_engine(self, config: AppConfig) -> AsyncIterable[AsyncEngine]:
@@ -39,9 +42,9 @@ class DatabaseProvider(Provider):
         return session_maker
 
     @provide(scope=Scope.REQUEST)
-    async def get_uow(
+    async def provide_session(
         self,
-        session_maker: async_sessionmaker[AsyncSession],
-    ) -> AsyncIterable[UnitOfWork]:
-        uow = UnitOfWork(session_maker)
-        yield uow
+        pool: async_sessionmaker[AsyncSession],
+    ) -> AsyncIterable[AsyncSession]:
+        async with pool() as session:
+            yield session

@@ -1,68 +1,153 @@
+import inspect
 from functools import wraps
-from typing import Any, Awaitable, Callable, Optional, ParamSpec, TypeVar, get_type_hints
+from typing import (
+    Any,
+    Callable,
+    Coroutine,
+    Optional,
+    ParamSpec,
+    TypeVar,
+    Union,
+    cast,
+    get_type_hints,
+)
 
+from adaptix import Retort
 from loguru import logger
-from pydantic import SecretStr, TypeAdapter
 from redis.asyncio import Redis
 from redis.typing import ExpiryT
 
 from src.core.constants import TIME_1M
-from src.core.utils import json_utils
+from src.infrastructure.common import json
+
+from .key_builder import StorageKey
 
 T = TypeVar("T", bound=Any)
 P = ParamSpec("P")
 
 
-def prepare_for_cache(obj: Any) -> Any:
-    if isinstance(obj, SecretStr):
-        return obj.get_secret_value()
-    elif isinstance(obj, dict):
-        return {k: prepare_for_cache(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [prepare_for_cache(v) for v in obj]
-    return obj
+def _extract_args(func: Callable, args: tuple, kwargs: dict) -> dict[str, Any]:
+    sig = inspect.signature(func)
+    bound_args = sig.bind(*args, **kwargs)
+    bound_args.apply_defaults()
+    result = dict(bound_args.arguments)
+    result.pop("self", None)
+    return result
 
 
-def redis_cache(
+def provide_cache(  # noqa: C901
     prefix: Optional[str] = None,
     ttl: ExpiryT = TIME_1M,
-) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:
-    def decorator(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
-        return_type: Any = get_type_hints(func)["return"]
-        type_adapter: TypeAdapter[T] = TypeAdapter(return_type)
+    key_builder: Optional[Union[Callable[..., Any], type[StorageKey]]] = None,
+) -> Callable[[Callable[P, Coroutine[Any, Any, T]]], Callable[P, Coroutine[Any, Any, T]]]:
+    def decorator(func: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, Coroutine[Any, Any, T]]:
+        return_type = get_type_hints(func).get("return", Any)
 
         @wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             self: Any = args[0]
-            redis: Redis = self.redis_client
+            retort: Retort = self.retort
+            redis: Redis = self.redis
 
-            # Build cache key
-            key_parts = [
-                "cache",
-                prefix or func.__name__,
-                *map(str, args[1:]),
-                *map(str, kwargs.values()),
-            ]
-            key: str = ":".join(key_parts)
+            if isinstance(key_builder, type) and issubclass(key_builder, StorageKey):
+                func_args = _extract_args(func, args, kwargs)
+                try:
+                    key_obj = key_builder(**func_args)
+                    key = retort.dump(key_obj)
+                except Exception:
+                    key = "unknown_key"
+                    for arg_val in func_args.values():
+                        try:
+                            key_obj = key_builder.from_obj(arg_val)
+                            key = retort.dump(key_obj)
+                            break
+                        except Exception:
+                            continue
+            elif key_builder:
+                suffix = str(key_builder(*args, **kwargs))
+                key = f"cache:{prefix or func.__name__}:{suffix}"
+            else:
+                key_parts = ["cache", prefix or func.__name__]
+                key_parts.extend(map(str, args[1:]))
+                key_parts.extend(map(str, kwargs.values()))
+                key = ":".join(key_parts)
 
             try:
-                cached_value: Optional[bytes] = await redis.get(key)
-                if cached_value is not None:
-                    logger.debug(f"Cache hit: '{key}'")
-                    parsed = json_utils.decode(cached_value.decode())
-                    return type_adapter.validate_python(parsed)
-            except Exception as exception:
-                logger.warning(f"Cache read failed for key '{key}': {exception}")
+                cached_data = await redis.get(key)
+                if cached_data is not None:
+                    logger.debug(f"Cache hit for key '{key}'")
+                    raw_json = json.decode(cached_data)
+                    return cast(T, retort.load(raw_json, return_type))
+            except Exception as e:
+                logger.warning(f"Cache read failed for key '{key}' error '{e}'")
 
-            logger.debug(f"Cache miss: '{key}'. Executing function")
-            result: T = await func(*args, **kwargs)
+            logger.debug(f"Cache miss for key '{key}', executing function")
+            result = await func(*args, **kwargs)
 
             try:
-                safe_result = prepare_for_cache(type_adapter.dump_python(result))
-                await redis.setex(key, ttl, json_utils.encode(safe_result))
-                logger.debug(f"Result cached: '{key}' (ttl={ttl})")
-            except Exception as exception:
-                logger.warning(f"Cache write failed for key '{key}': {exception}")
+                serialized_data = retort.dump(result, return_type)
+                await redis.setex(name=key, time=ttl, value=json.encode(serialized_data))
+                logger.debug(f"Result cached for key '{key}' with ttl '{ttl}'")
+            except Exception as e:
+                logger.warning(f"Cache write failed for key '{key}' error '{e}'")
+
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+def invalidate_cache(  # noqa: C901
+    key_builder: Union[str, list[str], type[StorageKey]],
+) -> Callable[[Callable[P, Coroutine[Any, Any, T]]], Callable[P, Coroutine[Any, Any, T]]]:
+    def decorator(func: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, Coroutine[Any, Any, T]]:  # noqa: C901
+        @wraps(func)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:  # noqa: C901
+            result = await func(*args, **kwargs)
+            self: Any = args[0]
+            redis: Redis = self.redis
+            retort: Retort = self.retort
+
+            try:
+                if isinstance(key_builder, type) and issubclass(key_builder, StorageKey):
+                    func_args = _extract_args(func, args, kwargs)
+
+                    key = None
+                    try:
+                        key_obj = key_builder(**func_args)
+                        key = retort.dump(key_obj)
+                    except Exception:
+                        for arg_val in func_args.values():
+                            try:
+                                key_obj = key_builder.from_obj(arg_val)
+                                key = retort.dump(key_obj)
+                                break
+                            except Exception:
+                                continue
+
+                    if key:
+                        await redis.delete(key)
+                        logger.debug(f"Invalidated specific cache key '{key}'")
+
+                elif isinstance(key_builder, (str, list)):
+                    prefixes = [key_builder] if isinstance(key_builder, str) else key_builder
+                    for p in prefixes:
+                        pattern = f"cache:{p}*"
+                        keys = []
+
+                        async for k in redis.scan_iter(match=pattern):
+                            keys.append(k)
+
+                        if keys:
+                            await redis.delete(*keys)
+                            logger.debug(f"Invalidated cache for prefix '{p}', count '{len(keys)}'")
+                        else:
+                            logger.debug(
+                                f"No cache keys found to invalidate for pattern '{pattern}'"
+                            )
+            except Exception as e:
+                logger.warning(f"Cache invalidation failed for '{key_builder}' error '{e}'")
 
             return result
 

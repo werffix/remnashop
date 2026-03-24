@@ -1,12 +1,3 @@
-# Remnashop
-ntf-remnashop-info = 
-    <b>💎 Remnashop v{ $version }</b>
-
-    Данный проект был создан и поддерживается всего одним <strike>разработчиком</strike> электриком. Поскольку бот полностью БЕСПЛАТНЫЙ и с открытым исходным кодом, он существует только благодаря вашей поддержке.
-
-    ⭐ <i>Поставьте звездочку на <a href="{ $repository }">GitHub</a> и присоединяйтесь к нашему <a href="https://t.me/@remna_shop">сообществу</a>.</i>
-
-
 # Menu
 msg-main-menu =
     { hdr-user-profile }
@@ -58,11 +49,32 @@ msg-main-menu =
     }
 
 msg-menu-devices =
-    <b>📱 Мои устройства</b>
+    <b>📱 Управление устройствами</b>
 
-    Здесь вы можете удалить привязанные устройства.
-    
-    <i>Чтобы увеличить или уменьшить лимит вам нужно изменить подписку и выбрать нужное кол-во устройств.</i>
+    Подключено: <b>{ $current_count } / { $max_count }</b>
+
+    { $has_devices ->
+    [0] { empty }
+    *[HAS] Нажмите на устройство чтобы удалить его.
+    Если не хватает устройств — измените подписку.
+    }
+
+msg-menu-devices-confirm-reissue =
+    🔄 <b>Перевыпуск подписки</b>
+
+    ⚠️ После сброса старая ссылка <b>перестанет работать</b>.
+
+    Вам потребуется:
+    • Удалить старую подписку из приложения
+    • Добавить новую ссылку из раздела «Подключение»
+
+    Вы уверены, что хотите сбросить ссылку?
+
+msg-menu-devices-confirm-delete =
+    🗑 Удалить устройство <b>{ $selected_device_label }</b>?
+
+msg-menu-devices-confirm-delete-all =
+    🗑 Удалить <b>все устройства</b>?
 
 msg-menu-invite =
     <b>👥 Пригласить друзей</b>
@@ -151,7 +163,7 @@ msg-invite-reward = { $value }{ $reward_strategy_type ->
 msg-dashboard-main = <b>🛠 Панель управления</b>
 msg-users-main = <b>👥 Пользователи</b>
 msg-broadcast-main = <b>📢 Рассылка</b>
-msg-statistics-main = { $statistics }
+msg-statistics-main = <b>📊 Статистика</b>
     
 msg-statistics-users =
     <b>👥 Статистика по пользователям</b>
@@ -165,7 +177,9 @@ msg-statistics-users =
     • <b>С подпиской</b>: { $users_with_subscription }
     • <b>Без подписки</b>: { $users_without_subscription }
     • <b>С пробным периодом</b>: { $users_with_trial }
+    </blockquote>
 
+    <blockquote>
     • <b>Заблокированные</b>: { $blocked_users }
     • <b>Заблокировали бота</b>: { $bot_blocked_users }
 
@@ -173,41 +187,67 @@ msg-statistics-users =
     • <b>Конверсия пробников → подписка</b>: { $trial_conversion }%
     </blockquote>
 
+msg-statistics-subscriptions =
+    { $plan_name ->
+    [0] <b>💳 Статистика по подпискам</b>
+    *[HAS] <b>📦 Статистика плана «{ $plan_name }»</b>
+    }
+
+    <blockquote>
+    • <b>Всего</b>: { $total }
+    • <b>Активные</b>: { $total_active }
+    • <b>Истекшие</b>: { $total_expired }
+    • <b>Истекающие (7 дней)</b>: { $expiring_soon }
+    { $plan_name ->
+    [0] • <b>Пробные</b>: { $active_trial }
+    *[HAS] • <b>Популярная длительность</b>: { $popular_duration }
+    }
+    </blockquote>
+
+    { $plan_name ->
+    [0] <blockquote>
+    • <b>С безлимитом</b>: { $total_unlimited }
+    • <b>С лимитом трафика</b>: { $total_traffic }  
+    • <b>С лимитом устройств</b>: { $total_devices }
+    </blockquote>
+    *[HAS] <b>Общий доход</b>:
+    <blockquote>
+    { $all_income }
+    </blockquote>
+    }
+    
+msg-statistics-subscriptions-plan-income = { $income }{ $currency }
+    
 msg-statistics-transactions =
-    <b>🧾 Статистика по транзакциям</b>
+    { $gateway_type ->
+    [0] <b>🧾 Общая статистика по транзакциям</b>
+    *[HAS] <b>🧾 Статистика { gateway-type }</b>
+    }
 
     <blockquote>
     • <b>Всего транзакций</b>: { $total_transactions }
     • <b>Завершенных транзакций</b>: { $completed_transactions }
     • <b>Бесплатных транзакций</b>: { $free_transactions }
-    { $popular_gateway ->
-    [0] { empty }
-    *[HAS] • <b>Популярная платежная система</b>: { $popular_gateway }
+    { $gateway_type ->
+    [0] { $popular_gateway ->
+        [0] { empty }
+        *[HAS] • <b>Популярная платежная система</b>: { $popular_gateway }
+        }
+    *[HAS] { empty }
     }
     </blockquote>
 
-    { $payment_gateways }
-
-msg-statistics-subscriptions =
-    <b>💳 Статистика по подпискам</b>
-
-    <blockquote>
-    • <b>Активные</b>: { $total_active_subscriptions }
-    • <b>Истекшие</b>: { $total_expire_subscriptions }
-    • <b>Пробные</b>: { $active_trial_subscriptions }
-    • <b>Истекающие (7 дней)</b>: { $expiring_subscriptions }
+    { $gateway_type ->
+    [0] { empty }
+    *[HAS] <blockquote>
+    • <b>Общий доход</b>: { $total_income }{ $currency }
+    • <b>Доход за день</b>: { $daily_income }{ $currency }
+    • <b>Доход за неделю</b>: { $weekly_income }{ $currency }
+    • <b>Доход за месяц</b>: { $monthly_income }{ $currency }
+    • <b>Средний чек</b>: { $average_check }{ $currency }
+    • <b>Сумма скидок</b>: { $total_discounts }{ $currency }
     </blockquote>
-
-    <blockquote>
-    • <b>С безлимитом</b>: { $total_unlimited }
-    • <b>С лимитом трафика</b>: { $total_traffic }
-    • <b>С лимитом устройств</b>: { $total_devices }
-    </blockquote>
-
-msg-statistics-plans = 
-    <b>📦 Статистика по планам</b>
-
-    { $plans }
+    }
 
 msg-statistics-promocodes =
     <b>🎁 Статистика по промокодам</b>
@@ -226,39 +266,27 @@ msg-statistics-promocodes =
     </blockquote>
 
 msg-statistics-referrals =
-    <b>👪 Статистика по реферальной системе</b>
-    
-    <blockquote>
-    • <b></b>:
-    </blockquote>
+    <b>👪 Статистика по рефералам</b>
 
-msg-statistics-transactions-gateway =
-    <b>{ gateway-type }:</b>
     <blockquote>
-    • <b>Общий доход</b>: { $total_income }{ $currency }
-    • <b>Доход за день</b>: { $daily_income }{ $currency }
-    • <b>Доход за неделю</b>: { $weekly_income }{ $currency }
-    • <b>Доход за месяц</b>: { $monthly_income }{ $currency }
-    • <b>Средний чек</b>: { $average_check }{ $currency }
-    • <b>Сумма скидок</b>: { $total_discounts }{ $currency }
-    </blockquote>
-
-msg-statistics-plan =
-    <b>{ $plan_name }:</b> { $popular -> 
-    [0] { space }
-    *[HAS] (⭐)
+    • <b>Всего рефералов</b>: { $total_referrals }
+    • <b>Уровень 1</b>: { $level_1_count }
+    • <b>Уровень 2</b>: { $level_2_count }
+    • <b>Уникальных реферреров</b>: { $unique_referrers }
+    { $top_referrer_telegram_id ->
+        [0] { empty }
+        *[HAS] • <b>Топ реферрер</b>: { $top_referrer_username ->
+            [0] { NUMBER($top_referrer_telegram_id, useGrouping: 0) }
+            *[HAS] <a href="tg://user?id={ $top_referrer_telegram_id }">@{ $top_referrer_username }</a> 
+            } ({ $top_referrer_referrals_count } приглашенных)
     }
-    <blockquote>
-    • <b>Всего подписок</b>: { $total_subscriptions }
-    • <b>Активных подписок</b>: { $active_subscriptions }
-    • <b>Популярная длительность</b>: { $popular_duration }
-
-    • <b>Общий доход</b>: 
-    { $all_income }
     </blockquote>
 
-msg-statistics-plan-income = { $income }{ $currency }
-    
+    <blockquote>
+    • <b>Выдано наград</b>: { $total_rewards_issued }
+    • <b>Выдано баллов</b>: { $total_points_issued }
+    • <b>Выдано дней</b>: { $total_days_issued }
+    </blockquote>
 
 
 # Access
@@ -267,7 +295,7 @@ msg-access-main =
     
     <blockquote>
     • <b>Режим</b>: { access-mode }
-    • <b>Покупки</b>: { $purchases_allowed ->
+    • <b>Платежи</b>: { $payments_allowed ->
     [0] запрещены
     *[1] разрешены
     }.
@@ -385,6 +413,42 @@ msg-user-main =
     • Нет текущей подписки.
     </blockquote>
     }
+
+msg-user-statistics =
+    <b>📊 Статистика пользователя</b>
+
+    <blockquote>
+    • <b>Дата регистрации</b>: { $registered_at }
+    • <b>Последний платеж</b>: { $last_payment_at ->
+        [0] { unknown }
+        *[HAS] { $last_payment_at }
+    }
+    </blockquote>
+
+    { $payment_amounts ->
+    [0] { space }
+    *[HAS] <blockquote>
+    { $payment_amounts }
+    </blockquote>
+    }
+
+    <blockquote>
+    • <b>Приглашен</b>: { $referrer_telegram_id ->
+        [0] { unknown }
+        *[HAS] { $referrer_username -> 
+            [0] { NUMBER($referrer_telegram_id, useGrouping: 0) }
+            *[HAS] <a href="tg://user?id={ $referrer_telegram_id }">@{ $referrer_username }</a>
+            }
+    }
+    • <b>Приглашенных (ур. 1)</b>: { $referrals_level_1 }
+    • <b>Приглашенных (ур. 2)</b>: { $referrals_level_2 }
+    • <b>Получено поинтов</b>: { $reward_points }
+    • <b>Получено дней</b>: { $reward_days }
+    </blockquote>
+
+msg-user-statistics-payment-amount = • <b>Оплачено ({ $currency })</b>: { $amount }
+
+msg-user-referrals = <b>👪 Рефералы пользователя</b>
 
 msg-user-sync = 
     <b>🌀 Синхронизировать пользователя</b>
@@ -523,9 +587,13 @@ msg-user-subscription-info =
     { frg-subscription-details }
 
     <blockquote>
-    • <b>Сквады</b>: { $squads -> 
+    • <b>Внутренние сквады</b>: { $internal_squads ->
     [0] { unknown }
-    *[HAS] { $squads }
+    *[HAS] { $internal_squads }
+    }
+    • <b>Внешний сквад</b>: { $external_squad ->
+    [0] { unknown }
+    *[HAS] { $external_squad }
     }
     • <b>Первое подключение</b>: { $first_connected_at -> 
     [0] { unknown }
@@ -578,7 +646,7 @@ msg-user-message =
 
 # RemnaWave
 msg-remnawave-main =
-    <b>🌊 RemnaWave</b>
+    <b>🌊 RemnaWave v{ $version }</b>
     
     <b>🖥️ Система:</b>
     <blockquote>
@@ -616,9 +684,9 @@ msg-remnawave-users =
     </blockquote>
 
 msg-remnawave-host-details =
-    <b>{ $remark } ({ $status ->
-    [ON] включен
-    *[OFF] выключен
+    <b>{ $remark } ({ $is_disabled ->
+    [1] выключен
+    *[0] включен
     }):</b>
     <blockquote>
     • <b>Адрес</b>: <code>{ $address }:{ $port }</code>
@@ -629,9 +697,9 @@ msg-remnawave-host-details =
     </blockquote>
 
 msg-remnawave-node-details =
-    <b>{ $country } { $name } ({ $status ->
-    [ON] подключено
-    *[OFF] отключено
+    <b>{ $country } { $name } ({ $is_connected ->
+    [1] подключено
+    *[0] отключено
     }):</b>
     <blockquote>
     • <b>Адрес</b>: <code>{ $address }{ $port -> 
@@ -647,7 +715,10 @@ msg-remnawave-inbound-details =
     <b>🔗 { $tag }</b>
     <blockquote>
     • <b>ID</b>: <code>{ $inbound_id }</code>
-    • <b>Протокол</b>: { $type } ({ $network })
+    • <b>Протокол</b>: { $type } { $network -> 
+    [0] { space }
+    *[HAS] ({ $network })
+    }
     { $port ->
     [0] { empty }
     *[HAS] • <b>Порт</b>: { $port }
@@ -675,8 +746,57 @@ msg-remnawave-inbounds =
 
 
 # RemnaShop
-msg-remnashop-main = <b>🛍 RemnaShop v{ $version }</b>
+msg-remnashop-main = <b>🛍 RemnaShop { $version ->
+[0] { space }
+*[HAS] v{ $version }
+}</b>
+
 msg-admins-main = <b>👮‍♂️ Администраторы</b>
+
+
+# Menu editor
+msg-menu-editor-main =
+    <b>🎛 Редактор кнопок главного меню</b>
+
+    Выберите кнопку для редактирования.
+
+msg-menu-editor-button =
+    <b>🎛 Конфигуратор кнопки</b>
+
+    <blockquote>
+    • <b>Статус</b>: { $is_active -> 
+        [1] 🟢 Включена
+        *[0] 🔴 Выключена
+        }
+    • <b>Текст</b>: { $text }
+    • <b>Доступ</b>: { role }
+    • <b>Тип</b>: { button-type }
+    • <b>Данные</b>: { $payload }
+    
+    </blockquote>
+
+    Выберите пункт для изменения.
+
+msg-menu-editor-button-text =
+    <b>🏷️ Изменить текст кнопки</b>
+
+    Введите текст кнопки (маскимум 16 символов) или ключ перевода.
+
+msg-menu-editor-button-availability =
+    <b>✴️ Изменить доступ к кнопке</b>
+
+    Выберите роль для доступа к кнопке.
+
+msg-menu-editor-button-type =
+    <b>🔖 Изменить тип кнопки</b>
+
+    Выберите тип кнопки.
+
+msg-menu-editor-button-payload =
+    <b>📄 Изменить данные кнопки</b>
+
+    Введите данные кнопки (для ссылок использовать https).
+
 
 
 # Gateways
@@ -776,12 +896,25 @@ msg-referral-reward =
 # Plans
 msg-plans-main = <b>📦 Планы</b>
 
+msg-plans-import = 
+    <b>📦 Импортировать планы</b>
+
+    Отправьте json файл для импорта.
+
+msg-plans-export = 
+    <b>📦 Экспортировать планы</b>
+
+    Выберите планы для экспорта.
+
 msg-plan-configurator =
     <b>📦 Конфигуратор плана</b>
 
     <blockquote>
     • <b>Название</b>: { $name }
-    • <b>Тип</b>: { plan-type }
+    • <b>Тип</b>: { plan-type } { $is_trial ->
+    [1] (Пробник)
+    *[0] { space }
+    }
     • <b>Доступ</b>: { availability-type }
     • <b>Статус</b>: { $is_active -> 
         [1] 🟢 Включен
@@ -813,7 +946,7 @@ msg-plan-name =
     </blockquote>
     }
 
-    Введите новое название плана.
+    Введите уникальное название плана или ключ перевода (максимум 16 символов).
 
 msg-plan-description =
     <b>💬 Изменить описание</b>
@@ -826,7 +959,7 @@ msg-plan-description =
     </blockquote>
     }
 
-    Введите новое описание плана.
+    Введите новое описание плана или ключ перевода.
 
 msg-plan-tag =
     <b>📌 Изменить тег</b>
@@ -839,12 +972,12 @@ msg-plan-tag =
     </blockquote>
     }
 
-    Введите новой тег плана (только латинские заглавные буквы, цифры и символ подчеркивания).
+    Введите новый тег плана (только латинские заглавные буквы, цифры и символ подчеркивания).
 
 msg-plan-type =
     <b>🔖 Изменить тип</b>
 
-    Выберите новый тип плана.
+    Выберите новый тип плана. Отметьте кнопкой «Пробник», чтобы предоставить данный план как пробный.
 
 msg-plan-availability =
     <b>✴️ Изменить доступность</b>
@@ -873,7 +1006,7 @@ msg-plan-duration =
 
 msg-plan-prices =
     <b>💰 Изменить цены длительности ({ $value ->
-            [-1] { unlimited }
+            [0] { unlimited }
             *[other] { unit-day }
         })</b>
 
@@ -881,7 +1014,7 @@ msg-plan-prices =
 
 msg-plan-price =
     <b>💰 Изменить цену для длительности ({ $value ->
-            [-1] { unlimited }
+            [0] { unlimited }
             *[other] { unit-day }
         })</b>
 
@@ -925,9 +1058,28 @@ msg-notifications-system = <b>⚙️ Системные уведомления</
 # Subscription
 msg-subscription-main = <b>💳 Подписка</b>
 msg-subscription-plans = <b>📦 Выберите план</b>
-msg-subscription-new-success = Чтобы начать пользоваться нашим сервисом, нажмите кнопку <code>`{ btn-subscription-connect }`</code> и следуйте инструкциям!
+msg-subscription-new-success = Чтобы начать пользоваться нашим сервисом, нажмите кнопку <code>`{ btn-subscription.connect }`</code> и следуйте инструкциям!
 msg-subscription-renew-success = Ваша подписка продлена на { $added_duration }.
 
+msg-subscription-plan = 
+    <b>📦 Доступный план по ссылке</b>
+    
+    Вам доступен план <b>{ $name }</b> по ссылке. Нажмите кнопку ниже чтобы перейти к выбору длительности и способа оплаты.
+
+    { $description ->
+    [0] { space }
+    *[HAS]
+    <blockquote>
+    { $description }
+    </blockquote>
+    }
+
+    { $purchase_type ->
+    [RENEW] <i>⚠️ Текущая подписка будет <u>продлена</u> на выбранный срок.</i>
+    [CHANGE] <i>⚠️ Текущая подписка будет <u>заменена</u> данным планом без пересчета оставшегося срока.</i>
+    *[OTHER] { empty }
+    }
+    
 msg-subscription-details =
     <b>{ $plan }:</b>
     <blockquote>
@@ -960,11 +1112,11 @@ msg-subscription-payment-method =
     { msg-subscription-details }
 
 msg-subscription-confirm =
-    { $purchase_type ->
-    [RENEW] <b>🛒 Подтверждение продления подписки</b>
-    [CHANGE] <b>🛒 Подтверждение изменения подписки</b>
-    *[OTHER] <b>🛒 Подтверждение покупки подписки</b>
-    }
+    <b>🛒 Подтверждение { $purchase_type ->
+    [RENEW] продления
+    [CHANGE] изменения
+    *[OTHER] покупки
+    } подписки</b>
 
     { msg-subscription-details }
 
@@ -1005,7 +1157,7 @@ msg-subscription-failed =
 msg-importer-main =
     <b>📥 Импорт пользователей</b>
 
-    Запуск синхронизации: проверка всех пользователей в RemnaWave. Если пользователя нет в базе бота, он будет создан и получит временную подписку. Если данные пользователя отличаются, они будут автоматически обновлены.
+    Запуск синхронизации: проверка всех пользователей в RemnaWave. Если пользователя нет в базе бота, он будет создан и получит временную подписку. Если данные пользователя отличаются, они будут автоматически обновлены (приоритет на данные из панели).
 
 msg-importer-from-xui =
     <b>📥 Импорт пользователей (3X-UI)</b>
@@ -1019,7 +1171,7 @@ msg-importer-from-xui =
     С истекшей подпиской: { $expired }
     </blockquote>
     *[0]
-    Импортируются все активные пользователи с числовым email.
+    Импортируются все <b>активные</b> пользователи с <b>числовым</b> email.
 
     Рекомендуется заранее отключить пользователей, у которых в поле email отсутствует Telegram ID. Операция может занять значительное время в зависимости от количества пользователей.
 

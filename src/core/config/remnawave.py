@@ -11,51 +11,45 @@ from .validators import validate_not_change_me
 
 
 class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
-    host: SecretStr = SecretStr("remnawave")
-    port: int = 3000
+    host: SecretStr = SecretStr("http://remnawave:3000")
     token: SecretStr
     caddy_token: SecretStr = SecretStr("")
+    cf_client_id: SecretStr = SecretStr("")
+    cf_client_secret: SecretStr = SecretStr("")
     webhook_secret: SecretStr
     cookie: SecretStr = SecretStr("")
 
     @property
     def is_external(self) -> bool:
-        return self.host.get_secret_value() != "remnawave"
+        return self.url.get_secret_value().startswith("https://")
 
     @property
     def url(self) -> SecretStr:
-        if self.is_external:
-            url = f"https://{self.host.get_secret_value()}"
-            return SecretStr(url)
+        clean_host = self.host.get_secret_value().strip().rstrip("/")
+
+        if "://" in clean_host:
+            final_url = clean_host
+        elif re.match(DOMAIN_REGEX, clean_host):
+            final_url = f"https://{clean_host}"
         else:
-            url = f"http://{self.host.get_secret_value()}:{self.port}"
-            return SecretStr(url)
+            final_url = f"http://{clean_host}"
+
+        host_part = final_url.split("://")[-1]
+        if ":" not in host_part and final_url.startswith("http://"):
+            final_url = f"{final_url}:3000"
+
+        return SecretStr(final_url)
 
     @property
     def cookies(self) -> Cookies:
-        cookie = self.cookie.get_secret_value()
+        raw_cookie = self.cookie.get_secret_value()
         cookies = Cookies()
 
-        if not self.cookie:
-            return cookies
-
-        key, value = cookie.split("=", 1)
-        cookies.set(key.strip(), value.strip())
+        if raw_cookie and "=" in raw_cookie:
+            key, value = raw_cookie.split("=", 1)
+            cookies.set(key.strip(), value.strip())
 
         return cookies
-
-    @field_validator("host")
-    @classmethod
-    def validate_host(cls, field: SecretStr, info: FieldValidationInfo) -> SecretStr:
-        host = field.get_secret_value()
-
-        if host == "remnawave" or re.match(DOMAIN_REGEX, host):
-            validate_not_change_me(field, info)
-            return field
-
-        raise ValueError(
-            "REMNAWAVE_HOST must be 'remnawave' (docker) or a valid domain (e.g., example.com)"
-        )
 
     @field_validator("token")
     @classmethod

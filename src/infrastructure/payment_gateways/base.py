@@ -6,15 +6,15 @@ from uuid import UUID
 
 import orjson
 from aiogram import Bot
-from fastapi import Request
+from fastapi import Request, Response
 from httpx import AsyncClient, Timeout
 from loguru import logger
 from starlette.datastructures import Headers
 
+from src.application.dto import PaymentGatewayDto, PaymentResultDto
 from src.core.config.app import AppConfig
 from src.core.constants import T_ME
 from src.core.enums import TransactionStatus
-from src.infrastructure.database.models.dto import PaymentGatewayDto, PaymentResult
 
 
 class PaymentGatewayFactory(Protocol):
@@ -38,10 +38,13 @@ class BasePaymentGateway(ABC):
         logger.debug(f"{self.__class__.__name__} Initialized")
 
     @abstractmethod
-    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResult: ...
+    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto: ...
 
     @abstractmethod
     async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]: ...
+
+    async def build_webhook_response(self, request: Request) -> Response:
+        return Response(status_code=200)
 
     async def _get_bot_redirect_url(self) -> str:
         if self._bot_username is None:
@@ -57,9 +60,9 @@ class BasePaymentGateway(ABC):
                 raise ValueError("Payload is not a dictionary")
 
             return data
-        except (orjson.JSONDecodeError, ValueError) as exception:
-            logger.error(f"Failed to parse webhook payload: {exception}")
-            raise ValueError("Invalid webhook payload") from exception
+        except (orjson.JSONDecodeError, ValueError) as e:
+            logger.error(f"Failed to parse webhook payload: {e}")
+            raise ValueError("Invalid webhook payload") from e
 
     def _make_client(
         self,
@@ -76,8 +79,8 @@ class BasePaymentGateway(ABC):
     def _is_ip_in_network(self, ip: str, network: str) -> bool:
         try:
             return ip_address(ip) in ip_network(network, strict=False)
-        except Exception as exception:
-            logger.error(f"Failed to check IP '{ip}' in network '{network}': {exception}")
+        except Exception as e:
+            logger.error(f"Failed to check IP '{ip}' in network '{network}': {e}")
             return False
 
     def _is_ip_trusted(self, ip: str) -> bool:

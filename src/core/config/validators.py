@@ -7,11 +7,7 @@ from src.core.utils.validators import is_valid_username
 
 
 def validate_not_change_me(value: Any, info: FieldValidationInfo) -> Any:
-    current_value: str
-
-    if isinstance(value, SecretStr):
-        current_value = value.get_secret_value()
-
+    current_value = value.get_secret_value() if isinstance(value, SecretStr) else str(value)
     env_prefix = info.config.get("env_prefix", "") if info.config else ""
     field_name = info.field_name.upper() if info.field_name else "UNKNOWN_FIELD"
     full_env_var_name = f"{env_prefix}{field_name}"
@@ -23,11 +19,7 @@ def validate_not_change_me(value: Any, info: FieldValidationInfo) -> Any:
 
 
 def validate_username(value: Any, info: FieldValidationInfo) -> Any:
-    current_value: str
-
-    if isinstance(value, SecretStr):
-        current_value = value.get_secret_value()
-
+    current_value = value.get_secret_value() if isinstance(value, SecretStr) else str(value)
     env_prefix = info.config.get("env_prefix", "") if info.config else ""
     field_name = info.field_name.upper() if info.field_name else "UNKNOWN_FIELD"
     full_env_var_name = f"{env_prefix}{field_name}"

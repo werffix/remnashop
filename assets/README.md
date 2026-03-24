@@ -1,3 +1,5 @@
+#TODO: add custom
+
 # `Banners`
 
 The `banners` folder contains all banner images.

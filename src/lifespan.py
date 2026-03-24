@@ -1,27 +1,29 @@
 import asyncio
-import traceback
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import WebhookInfo
-from aiogram.utils.formatting import Text
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
 from loguru import logger
 
-from src.__version__ import __version__
-from src.api.endpoints import TelegramWebhookEndpoint
-from src.core.config.app import AppConfig
-from src.core.enums import SystemNotificationType
-from src.core.utils.message_payload import MessagePayload
-from src.infrastructure.taskiq.tasks.updates import check_bot_update
-from src.services.command import CommandService
-from src.services.notification import NotificationService
-from src.services.payment_gateway import PaymentGatewayService
-from src.services.remnawave import RemnawaveService
-from src.services.settings import SettingsService
-from src.services.webhook import WebhookService
+from src.application.common import Remnawave
+from src.application.common.dao import SettingsDao
+from src.application.events import (
+    BotShutdownEvent,
+    BotStartupEvent,
+    RemnawaveErrorEvent,
+    WebhookErrorEvent,
+)
+from src.application.events.system import RemnashopWelcomeEvent
+from src.application.services import CommandService, WebhookService
+from src.application.use_cases.gateways.commands.payment import CreateDefaultPaymentGateway
+from src.core.config import AppConfig
+from src.core.utils.i18n_helpers import i18n_format_seconds
+from src.core.utils.time import get_uptime
+from src.infrastructure.services import EventBusImpl
+from src.web.endpoints import TelegramWebhookEndpoint
 
 
 @asynccontextmanager
@@ -30,37 +32,35 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     telegram_webhook_endpoint: TelegramWebhookEndpoint = app.state.telegram_webhook_endpoint
     container: AsyncContainer = app.state.dishka_container
 
+    event_bus = await container.get(EventBusImpl)
+    event_bus.set_container_factory(lambda: container)
+    event_bus.autodiscover()
+
     async with container(scope=Scope.REQUEST) as startup_container:
-        config: AppConfig = await startup_container.get(AppConfig)
-        webhook_service: WebhookService = await startup_container.get(WebhookService)
-        command_service: CommandService = await startup_container.get(CommandService)
-        settings_service: SettingsService = await startup_container.get(SettingsService)
-        gateway_service: PaymentGatewayService = await startup_container.get(PaymentGatewayService)
-        remnawave_service: RemnawaveService = await startup_container.get(RemnawaveService)
-        notification_service: NotificationService = await startup_container.get(NotificationService)
+        config = await startup_container.get(AppConfig)
+        settings_dao = await startup_container.get(SettingsDao)
+        webhook_service = await startup_container.get(WebhookService)
+        command_service = await startup_container.get(CommandService)
+        remnawave_service = await startup_container.get(Remnawave)
+        create_default_payment_gateway = await startup_container.get(CreateDefaultPaymentGateway)
 
-        await gateway_service.create_default()
-        settings = await settings_service.get()
+        await create_default_payment_gateway.system()
+        settings = await settings_dao.get()
+        allowed_updates = dispatcher.resolve_used_update_types()
+        webhook_info: WebhookInfo = await webhook_service.setup_webhook(allowed_updates)
 
-    await startup_container.close()
+        if webhook_service.has_error(webhook_info):
+            logger.critical(
+                f"Webhook has a last error message: '{webhook_info.last_error_message}'"
+            )
+            webhook_error_event = WebhookErrorEvent()
+            await event_bus.publish(webhook_error_event)
 
-    allowed_updates = dispatcher.resolve_used_update_types()
-    webhook_info: WebhookInfo = await webhook_service.setup(allowed_updates)
+        await command_service.setup_commands()
 
-    if webhook_service.has_error(webhook_info):
-        logger.critical(f"Webhook has a last error message: '{webhook_info.last_error_message}'")
-        await notification_service.system_notify(
-            ntf_type=SystemNotificationType.BOT_LIFETIME,
-            payload=MessagePayload.not_deleted(
-                i18n_key="ntf-event-error-webhook",
-                i18n_kwargs={"error": webhook_info.last_error_message},
-            ),
-        )
-
-    await command_service.setup()
     await telegram_webhook_endpoint.startup()
 
-    bot: Bot = await container.get(Bot)
+    bot = await container.get(Bot)
     bot_info = await bot.get_me()
     states: dict[Optional[bool], str] = {True: "Enabled", False: "Disabled", None: "Unknown"}
 
@@ -75,7 +75,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     <cyan>                                                 | |    </>
     <cyan>                                                 |_|    </>
 
-        <green>Version: {__version__}</>
         <green>Build Time: {config.build.time}</>
         <green>Branch: {config.build.branch} ({config.build.tag})</>
         <green>Commit: {config.build.commit}</>
@@ -84,52 +83,40 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         Privacy Mode - {states[not bot_info.can_read_all_group_messages]}
         Inline Mode  - {states[bot_info.supports_inline_queries]}
         <cyan>------------------------</>
-        <yellow>Bot in access mode: '{settings.access_mode}'</>
-        <yellow>Purchases allowed: '{settings.purchases_allowed}'</>
-        <yellow>Registration allowed: '{settings.registration_allowed}'</>
+        <yellow>Bot in access mode: '{settings.access.mode}'</>
+        <yellow>Payments allowed: '{settings.access.payments_allowed}'</>
+        <yellow>Registration allowed: '{settings.access.registration_allowed}'</>
         """  # noqa: W605
     )
-    await check_bot_update.kiq()
-    await notification_service.remnashop_notify()
-    await asyncio.sleep(2)
-    await notification_service.system_notify(
-        ntf_type=SystemNotificationType.BOT_LIFETIME,
-        payload=MessagePayload.not_deleted(
-            i18n_key="ntf-event-bot-startup",
-            i18n_kwargs={
-                "access_mode": settings.access_mode,
-                "purchases_allowed": settings.purchases_allowed,
-                "registration_allowed": settings.registration_allowed,
-            },
-        ),
+
+    await event_bus.publish(RemnashopWelcomeEvent())
+
+    bot_startup_event = BotStartupEvent(
+        **config.build.data,
+        access_mode=settings.access.mode,
+        payments_allowed=settings.access.payments_allowed,
+        registration_allowed=settings.access.registration_allowed,
     )
+    await event_bus.publish(bot_startup_event)
 
     try:
         await remnawave_service.try_connection()
-    except Exception as exception:
-        logger.exception(f"Remnawave connection failed: {exception}")
-        error_type_name = type(exception).__name__
-        error_message = Text(str(exception)[:512])
-
-        await notification_service.error_notify(
-            traceback_str=traceback.format_exc(),
-            payload=MessagePayload.not_deleted(
-                i18n_key="ntf-event-error-remnawave",
-                i18n_kwargs={
-                    "error": f"{error_type_name}: {error_message.as_html()}",
-                },
-            ),
-        )
+    except Exception as e:
+        remnawave_error_event = RemnawaveErrorEvent(**config.build.data, exception=e)
+        await event_bus.publish(remnawave_error_event)
 
     yield
 
-    await notification_service.system_notify(
-        ntf_type=SystemNotificationType.BOT_LIFETIME,
-        payload=MessagePayload.not_deleted(i18n_key="ntf-event-bot-shutdown"),
+    bot_shutdown_event = BotShutdownEvent(
+        **config.build.data,
+        uptime=i18n_format_seconds(get_uptime()),
     )
+    await event_bus.publish(bot_shutdown_event)
 
+    await asyncio.sleep(2)
+
+    await event_bus.shutdown()
     await telegram_webhook_endpoint.shutdown()
-    await command_service.delete()
-    await webhook_service.delete()
-
+    await command_service.delete_commands()
+    await webhook_service.delete_webhook()
     await container.close()

@@ -1,335 +1,25 @@
-# Errors
-ntf-error-lost-context = <i>⚠️ Произошла ошибка. Диалог перезапущен.</i>
-ntf-error-log-not-found = <i>⚠️ Ошибка: Лог файл не найден.</i>
-
-
-# Events
-ntf-event-error =
-    #EventError
-
-    <b>🔅 Событие: Произошла ошибка!</b>
-
-    { frg-build-info }
+ntf-error =
+    .unknown = ⚠️ <i>Произошла ошибка.</i>
+    .permission-denied = ⚠️ <i>У вас недостаточно прав.</i>
+    .log-not-found = ⚠️ <i>Лог файл не найден.</i>
+    .logs-disabled = ⚠️ <i>Логирование в файл отключено.</i>
     
-    { $user -> 
-    [1]
-    { hdr-user }
-    { frg-user-info }
-    *[0] { space }
-    }
+    .lost-context = ⚠️ <i>Произошла ошибка. Перезапустите диалог командой /start.</i>
+    .lost-context-restart = ⚠️ <i>Произошла ошибка. Диалог перезапущен.</i>
 
-    { hdr-error }
-    <blockquote>
-    { $error }
-    </blockquote>
+ntf-common =
+    .trial-unavailable = ⚠️ <i>Пробная подписка временно недоступна.</i>
+    .throttling = ⚠️ <i>Вы отправляете слишком много запросов. Пожалуйста, подождите.</i>
+    .double-click-confirm = ⚠️ <i>Нажмите еще раз, чтобы подтвердить действие.</i>
+    .squads-empty = ⚠️ <i>Сквады не найдены. Проверьте их наличие в панели.</i>
 
-ntf-event-error-remnawave =
-    #EventError
+    .withdraw-points = ❌ <i>У вас недостаточно баллов для выполнения обмена.</i>
+    .internal-squads-empty = ❌ <i>Выберите хотя бы один внутренний сквад.</i>
 
-    <b>🔅 Событие: Ошибка при подключении к Remnawave!</b>
-
-    <blockquote>
-    Без активного подключения корректная работа бота невозможна!
-    </blockquote>
-
-    { frg-build-info }
-
-    { hdr-error }
-    <blockquote>
-    { $error }
-    </blockquote>
-
-ntf-event-error-webhook =
-    #EventError
-
-    <b>🔅 Событие: Зафиксирована ошибка вебхука!</b>
-
-    { hdr-error }
-    <blockquote>
-    { $error }
-    </blockquote>
-
-ntf-event-bot-startup =
-    #EventBotStarted
-
-    <b>🔅 Событие: Бот запущен!</b>
-
-    <blockquote>
-    • <b>Режим доступа</b>: { access-mode }
-    • <b>Покупки</b>: { $purchases_allowed ->
-    [0] запрещены
-    *[1] разрешены
-    }.
-    • <b>Регистрация</b>: { $registration_allowed ->
-    [0] запрещена
-    *[1] разрешена
-    }.
-    </blockquote>
-
-ntf-event-bot-shutdown =
-    #EventBotShutdown
-
-    <b>🔅 Событие: Бот остановлен!</b>
-
-ntf-event-bot-update =
-    #EventBotUpdate
-
-    <b>🔅 Событие: Обнаружено обновление Remnashop!</b>
-
-    <blockquote>
-    • <b>Текущая версия</b>: { $local_version }
-    • <b>Доступная версия</b>: { $remote_version }
-    </blockquote>
-
-ntf-event-new-user =
-    #EventNewUser
-
-    <b>🔅 Событие: Новый пользователь!</b>
-
-    { hdr-user }
-    { frg-user-info }
-
-    { $has_referrer ->
-    [0] { empty }
-    *[HAS]
-    <b>🤝 Реферер:</b>
-    <blockquote>
-    • <b>ID</b>: <code>{ $referrer_user_id }</code>
-    • <b>Имя</b>: { $referrer_user_name } { $referrer_username -> 
-        [0] { empty }
-        *[HAS] (<a href="tg://user?id={ $referrer_user_id }">@{ $referrer_username }</a>)
-    }
-    </blockquote>
-    }
+    .invalid-value = ❌ <i>Некорректное значение.</i>
+    .value-updated = ✅ <i>Параметр успешно обновлен.</i>
     
-ntf-event-subscription-trial =
-    #EventTrialGetted
-
-    <b>🔅 Событие: Получение пробной подписки!</b>
-
-    { hdr-user }
-    { frg-user-info }
-    
-    { hdr-plan }
-    { frg-plan-snapshot }
-
-ntf-event-subscription-new =
-    #EventSubscriptionNew
-
-    <b>🔅 Событие: Покупка подписки!</b>
-
-    { hdr-payment }
-    { frg-payment-info }
-
-    { hdr-user }
-    { frg-user-info }
-
-    { hdr-plan }
-    { frg-plan-snapshot }
-
-ntf-event-subscription-renew =
-    #EventSubscriptionRenew
-
-    <b>🔅 Событие: Продление подписки!</b>
-    
-    { hdr-payment }
-    { frg-payment-info }
-
-    { hdr-user }
-    { frg-user-info }
-
-    { hdr-plan }
-    { frg-plan-snapshot }
-
-ntf-event-subscription-change =
-    #EventSubscriptionChange
-
-    <b>🔅 Событие: Изменение подписки!</b>
-
-    { hdr-payment }
-    { frg-payment-info }
-
-    { hdr-user }
-    { frg-user-info }
-
-    { hdr-plan }
-    { frg-plan-snapshot-comparison }
-
-ntf-event-node-connection-lost =
-    #EventNode
-
-    <b>🔅 Событие: Соединение с узлом потеряно!</b>
-
-    { hdr-node }
-    { frg-node-info }
-
-ntf-event-node-connection-restored =
-    #EventNode
-
-    <b>🔅 Событие: Cоединение с узлом восстановлено!</b>
-
-    { hdr-node }
-    { frg-node-info }
-
-ntf-event-node-traffic =
-    #EventNode
-
-    <b>🔅 Событие: Узел достиг порога лимита трафика!</b>
-
-    { hdr-node }
-    { frg-node-info }
-
-# ntf-event-user-sync =
-#     #EventUser
-
-#     <b>🔅 Событие: Синхронизация пользователя!</b>
-
-#     { hdr-user }
-#     { frg-user-info }
-
-#     { hdr-subscription }
-#     { frg-subscription-details }
-
-# ntf-event-user-deleted =
-#     #EventUser
-
-#     <b>🔅 Событие: Пользователь удален из панели!</b>
-
-#     { hdr-user }
-#     { frg-user-info }
-
-#     { hdr-subscription }
-#     { frg-subscription-details }
-
-ntf-event-user-first-connected =
-    #EventUser
-
-    <b>🔅 Событие: Первое подключение пользователя!</b>
-
-    { hdr-user }
-    { frg-user-info }
-
-    { hdr-subscription }
-    { frg-subscription-details }
-
-ntf-event-user-expiring =
-    { $is_trial ->
-    [0]
-    <b>⚠️ Внимание! Ваша подписка закончится через { unit-day }.</b>
-    
-    Продлите ее заранее, чтобы не терять доступ к сервису! 
-    *[1]
-    <b>⚠️ Внимание! Ваш бесплатный пробник закончится через { unit-day }.</b>
-
-    Оформите подписку, чтобы не терять доступ к сервису! 
-    }
-
-ntf-event-user-expired =
-    <b>⛔ Внимание! Доступ приостановлен — VPN не работает.</b>
-
-    { $is_trial ->
-    [0] Ваша подписка истекла, продлите ее, чтобы продолжить пользоваться VPN!
-    *[1] Ваш бесплатный пробный период закончился. Оформите подписку, чтобы продолжить пользоваться сервисом!
-    }
-    
-ntf-event-user-expired-ago =
-    <b>⛔ Внимание! Доступ приостановлен — VPN не работает.</b>
-
-    { $is_trial ->
-    [0] Ваша подписка истекла { unit-day } назад, продлите ее, чтобы продолжить пользоваться сервисом!
-    *[1] Ваш бесплатный пробный период закончился { unit-day } назад. Оформите подписку, чтобы продолжить пользоваться сервисом!
-    }
-
-ntf-event-user-limited =
-    <b>⛔ Внимание! Доступ приостановлен — VPN не работает.</b>
-
-    Ваш трафик израсходован. { $is_trial ->
-    [0] { $traffic_strategy ->
-        [NO_RESET] Продлите подписку, чтобы сбросить трафик и продолжить пользоваться сервисом!
-        *[RESET] Трафик будет восстановлен через { $reset_time }. Вы также можете продлить подписку, чтобы сбросить трафик.
-        }
-    *[1] { $traffic_strategy ->
-        [NO_RESET] Оформите подписку, чтобы продолжить пользоваться сервисом!
-        *[RESET] Трафик будет восстановлен через { $reset_time }. Вы также можете оформить подписку, чтобы пользоваться сервисом без ограничений.
-        }
-    }
-
-ntf-event-user-hwid-added =
-    #EventUserHwid
-
-    <b>🔅 Событие: Пользователь добавил новое устройство!</b>
-
-    { hdr-user }
-    { frg-user-info }
-
-    { hdr-hwid }
-    { frg-user-hwid }
-
-ntf-event-user-hwid-deleted =
-    #EventUserHwid
-
-    <b>🔅 Событие: Пользователь удалил устройство!</b>
-
-    { hdr-user }
-    { frg-user-info }
-
-    { hdr-hwid }
-    { frg-user-hwid }
-
-ntf-event-user-referral-attached =
-    <b>🎉 Вы пригласили друга!</b>
-    
-    <blockquote>
-    Пользователь <b>{ $name }</b> присоединился по вашей пригласительной ссылке! Чтобы получить награду, убедитесь, что он совершит покупку подписки.
-    </blockquote>
-
-ntf-event-user-referral-reward =
-    <b>💰 Вам начислена награда!</b>
-    
-    <blockquote>
-    Пользователь <b>{ $name }</b> совершил платеж. Вы получили <b>{ $value } { $reward_type ->
-    [POINTS] { $value -> 
-        [one] балл
-        [few] балла
-        *[more] баллов 
-        }
-    [EXTRA_DAYS] доп. { $value -> 
-        [one] день
-        [few] дня
-        *[more] дней
-        }
-    *[OTHER] { $reward_type }
-    }</b> к вашей подписке!
-    </blockquote>
-
-ntf-event-user-referral-reward-error =
-    <b>❌ Не получилось выдать награду!</b>
-    
-    <blockquote>
-    Пользователь <b>{ $name }</b> совершил платеж, но мы не смогли начислить вам вознаграждение из-за того что <b>у вас нет купленной подписки</b>, к которой можно было бы добавить {$value} { $value ->
-            [one] доп. день
-            [few] доп. дня
-            *[more] доп. дней
-        }.
-    
-    <i>Купите подписку, чтобы получать бонусы за приглашенных друзей!</i>
-    </blockquote>
-
-
-# Notifications
-ntf-command-paysupport = 💸 <b>Чтобы запросить возврат, обратитесь в нашу службу поддержки.</b>
-ntf-command-help = 🆘 <b>Нажмите кнопку ниже, чтобы связаться с поддержкой. Мы поможем решить вашу проблему.</b>
-ntf-channel-join-required = ❇️ Подпишитесь на наш канал и получайте <b>бесплатные дни, акции и новости</b>! После подписки нажмите кнопку «Подтвердить».
-ntf-channel-join-required-left = ⚠️ Вы отписались от нашего канала! Подпишитесь, чтобы иметь возможность пользоваться ботом.
-ntf-rules-accept-required = ⚠️ <b>Перед использованием сервиса, пожалуйста, ознакомьтесь и примите <a href="{ $url }">Условия использования</a> сервиса.</b>
-
-ntf-double-click-confirm = <i>⚠️ Нажмите еще раз, чтобы подтвердить действие.</i>
-ntf-channel-join-error = <i>⚠️ Мы не видим вашу подписку на канал. Проверьте, что вы подписались, и попробуйте еще раз.</i>
-ntf-throttling-many-requests = <i>⚠️ Вы отправляете слишком много запросов, пожалуйста, подождите немного.</i>
-ntf-squads-empty = <i>⚠️ Сквады не найдены. Проверьте их наличие в панели.</i>
-ntf-invite-withdraw-points-error = ❌ У вас недостаточно баллов для выполнения обмена.
-
-ntf-connect-not-available =
+    .connect-not-available =
     ⚠️ { $status ->
     [LIMITED]
     Вы израсходовали весь доступный объем трафика. { $is_trial ->
@@ -344,108 +34,125 @@ ntf-connect-not-available =
     }
     [EXPIRED]  
     { $is_trial ->
-    [0] Срок действия вашей подписки истек. Чтобы продолжить пользоваться сервисом, продлите подписку или оформите новую.
-    *[1] Ваш бесплатный пробный период закончился. Оформите подписку, чтобы продолжить пользоваться сервисом!
+    [0] Срок действия вашей подписки истек. Продлите подписку или оформите новую.
+    *[1] Бесплатный пробный период завершен. Оформите подписку, чтобы продолжить пользоваться сервисом.
     }
-    *[OTHER] Произошла ошибка при проверке статуса или ваша подписка была отключена. Обратитесь в поддержку.
+    *[OTHER] Произошла ошибка при проверке статуса или подписка была отключена. Обратитесь в поддержку.
     }
+    
+ntf-command =
+    .paysupport = 💸 <b>Чтобы запросить возврат, обратитесь в службу поддержки.</b>
+    .rules = ⚠️ <b>Пожалуйста, ознакомьтесь с <a href="{ $url }">Условиями использования</a> перед использованием сервиса.</b>
+    .help = 🆘 <b>Нажмите кнопку ниже, чтобы связаться с поддержкой.</b>
 
-ntf-user-not-found = <i>❌ Пользователь не найден.</i>
-ntf-user-transactions-empty = <i>❌ Список транзакций пуст.</i>
-ntf-user-subscription-empty = <i>❌ Текущая подписка не найдена.</i>
-ntf-user-plans-empty = <i>❌ Нет доступных планов для выдачи.</i>
-ntf-user-devices-empty = <i>❌ Список устройств пуст.</i>
-ntf-user-invalid-number = <i>❌ Некорректное число.</i>
-ntf-user-allowed-plans-empty = <i>❌ Нет доступных планов для предоставления доступа.</i>
-ntf-user-message-success = <i>✅ Сообщение успешно отправлено.</i>
-ntf-user-message-not-sent = <i>❌ Не удалось отправить сообщение.</i>
-ntf-user-sync-already = <i>✅ Данные подписки совпадают.</i>
-ntf-user-sync-missing-data = <i>⚠️ Синхронизация невозможна. Данные подписки отсутствуют и на панели, и в боте.</i>
-ntf-user-sync-success = <i>✅ Синхронизация подписки выполнена.</i>
+ntf-requirement =
+    .channel-join-required = ❇️ Подпишитесь на наш канал и получайте <b>бесплатные дни, акции и новости</b>. После подписки нажмите «Подтвердить».
+    .channel-join-required-left = ⚠️ Вы отписались от канала. Подпишитесь, чтобы продолжить пользоваться ботом.
+    .rules-accept-required = ⚠️ <b>Перед использованием сервиса ознакомьтесь и примите <a href="{ $url }">Условия использования</a>.</b>
+    .channel-join-error = ⚠️ Мы не видим вашу подписку на канал. Проверьте подписку и попробуйте снова.
+    
+ntf-user =
+    .not-found = <i>❌ Пользователь не найден.</i>
+    .transactions-empty = ❌ <i>Список транзакций пуст.</i>
+    .subscription-empty = ❌ <i>Активная подписка не найдена.</i>
+    .subscription-deleted = ✅ <i>Подписка успешно удалена.</i>
+    .plans-empty = ❌ <i>Нет доступных планов.</i>
+    .devices-empty = ❌ <i>Список устройств пуст.</i>
+    .allowed-plans-empty = ❌ <i>Нет доступных планов для предоставления доступа.</i>
+    .message-success = ✅ <i>Сообщение успешно отправлено.</i>
+    .message-failed = ❌ <i>Не удалось отправить сообщение.</i>
 
-ntf-user-invalid-expire-time = <i>❌ Невозможно { $operation ->
-    [ADD] продлить подписку на указанное количество дней
-    *[SUB] уменьшить срок подписки на указанное количество дней
-    }.</i>
+    .sync-already = ✅ <i>Данные подписки идентичны.</i>
+    .sync-missing-data = ⚠️ <i>Синхронизация невозможна. Данные подписки отсутствуют в панели и в боте.</i>
+    .sync-success = ✅ <i>Синхронизация подписки выполнена.</i>
 
-ntf-user-invalid-points = <i>❌ Невозможно { $operation ->
-    [ADD] добавить указанное количество баллов
-    *[SUB] отнять указанное количество баллов
-    }.</i>
+    .invalid-expire-time = ❌ <i>Невозможно { $operation ->
+    [ADD] продлить
+    *[SUB] сократить
+    } срок подписки на указанное количество дней.</i>
 
-ntf-referral-invalid-reward = <i>❌ Некорректное значение.</i>
+    .invalid-points = ❌ <i>Невозможно { $operation ->
+    [ADD] добавить
+    *[SUB] списать
+    } указанное количество баллов.</i>
 
-ntf-access-denied = <i>🚧 Бот в режиме обслуживания, попробуйте позже.</i>
-ntf-access-denied-registration = <i>❌ Регистрация новых пользователей отключена.</i>
-ntf-access-denied-only-invited = <i>❌ Регистрация новых пользователей доступна только через приглашение другим пользователем.</i>
-ntf-access-denied-purchasing = <i>🚧 Бот в режиме обслуживания, Вам придет уведомление когда бот снова будет доступен.</i>
-ntf-access-allowed = <i>❇️ Весь функционал бота снова доступен, спасибо за ожидание.</i>
-ntf-access-id-saved = <i>✅ ID канала/группы успешно обновлен.</i>
-ntf-access-link-saved = <i>✅ Ссылка на канал/группу успешно обновлена.</i>
-ntf-access-channel-invalid = <i>❌ Некорректная ссылка или ID канала/группы.</i>
+ntf-access =
+    .maintenance = 🚧 <i>Бот находится на обслуживании. Попробуйте позже.</i>
+    .registration-disabled = ❌ <i>Регистрация новых пользователей отключена.</i>
+    .registration-invite-only = ❌ <i>Регистрация доступна только по приглашению.</i>
+    .payments-disabled = 🚧 <i>Платежи временно недоступны! Вы получите уведомление после восстановления.</i>
+    .payments-restored = ❇️ <i>Платежи восстановленны! Теперь вы можете купить или продлить подписку. Спасибо за ожидание.</i>
 
-ntf-plan-invalid-name = <i>❌ Некорректное имя.</i>
-ntf-plan-invalid-description = <i>❌ Некорректное описание.</i>
-ntf-plan-invalid-tag = <i>❌ Некорректный тег.</i>
-ntf-plan-invalid-number = <i>❌ Некорректное число.</i>
-ntf-plan-trial-once-duration = <i>❌ Пробный план может иметь только одну длительность.</i>
-ntf-plan-trial-already-exists = <i>❌ Пробный план уже существует.</i>
-ntf-plan-duration-already-exists = <i>❌ Такая длительность уже существует.</i>
-ntf-plan-duration-last = <i>❌ Нельзя удалить последнюю длительность.</i>
-ntf-plan-save-error = <i>❌ Ошибка сохранения плана.</i>
-ntf-plan-name-already-exists = <i>❌ План с таким именем уже существует.</i>
-ntf-plan-invalid-user-id = <i>❌ Некорректный ID пользователя.</i>
-ntf-plan-no-user-found = <i>❌ Пользователь не найден.</i>
-ntf-plan-user-already-allowed = <i>❌ Пользователь уже добавлен в список разрешенных.</i>
-ntf-plan-confirm-delete = <i>⚠️ Нажмите еще раз, чтобы удалить.</i>
-ntf-plan-updated-success = <i>✅ План успешно обновлен.</i>
-ntf-plan-created-success = <i>✅ План успешно создан.</i>
-ntf-plan-deleted-success = <i>✅ План успешно удален.</i>
-ntf-plan-internal-squads-empty = <i>❌ Выберите хотя бы один внутренний сквад.</i>
+ntf-plan =
+    .not-file = ⚠️ <i>Отправьте планы в виде json файла.</i>
+    .import-failed = ❌ <i>Не удалось импортировать.</i>
+    .import-success = ✅ <i>Успешно импотированно.</i>
+    .export-plans_not_selected =  ❌ <i>Выберите хотя бы один план для экспорта.</i>
+    .export-failed = ❌ <i>Не удалось экспортировать.</i>
+    .export-success = ✅ <i>Выбранные планы экспортированы.</i>
+    .trial-single-duration = ❌ <i>Пробный план может иметь только одну длительность.</i>
+    .duration-already-exists = ❌ <i>Такая длительность уже существует.</i>
+    .name-already-exists = ❌ <i>План с таким именем уже существует.</i>
+    .user-already-allowed = ❌ <i>Индентификтор пользователя уже добавлен.</i>
 
-ntf-gateway-not-configured = <i>❌ Платежный шлюз не настроен.</i>
-ntf-gateway-not-configurable = <i>❌ Платежный шлюз не имеет настроек.</i>
-ntf-gateway-field-wrong-value = <i>❌ Некорректное значение.</i>
-ntf-gateway-test-payment-created = <i>✅ <a href="{ $url }">Тестовый платеж</a> успешно создан.</i>
-ntf-gateway-test-payment-error = <i>❌ Произошла ошибка при создании тестового платежа.</i>
-ntf-gateway-test-payment-confirmed = <i>✅ Тестовый платеж успешно обработан.</i>
+    .updated = ✅ <i>План успешно обновлен.</i>
+    .created = ✅ <i>План успешно создан.</i>
+    .deleted = ✅ <i>План успешно удален.</i>
 
-ntf-subscription-plans-not-available = <i>❌ Нет доступных планов.</i>
-ntf-subscription-gateways-not-available = <i>❌ Нет доступных платежных систем.</i>
-ntf-subscription-renew-plan-unavailable = <i>❌ Ваш план устарел и не доступен для продления.</i>
-ntf-subscription-payment-creation-failed = <i>❌ Произошла ошибка при создании платежа, попробуйте позже.</i>
+ntf-gateway =
+    .not-configured = ❌ <i>Платежный шлюз не настроен.</i>
+    .not-configurable = ❌ <i>У платежного шлюза отсутствуют настройки.</i>
 
-ntf-broadcast-list-empty = <i>❌ Список рассылок пуст.</i>
-ntf-broadcast-audience-not-available = <i>❌ Нет доступных пользователей для выбранной аудитории.</i>
-ntf-broadcast-audience-not-active = <i>❌ Нет пользователей у которых есть АКТИВНАЯ подписка с данным планом.</i>
-ntf-broadcast-plans-not-available = <i>❌ Нет доступных планов.</i>
-ntf-broadcast-empty-content = <i>❌ Контент пустой.</i>
-ntf-broadcast-wrong-content = <i>❌ Некорректный контент.</i>
-ntf-broadcast-content-saved = <i>✅ Контент сообщения успешно сохранен.</i>
-ntf-broadcast-preview = { $content }
-ntf-broadcast-not-cancelable = <i>❌ Рассылка не может быть отменена.</i>
-ntf-broadcast-canceled = <i>✅ Рассылка успешно отменена.</i>
-ntf-broadcast-deleting = <i>⚠️ Идет удаление всех отправленных сообщений.</i>
-ntf-broadcast-already-deleted = <i>❌ Рассылка находится в процессе удаления или уже удалена.</i>
+    .test-payment-created = ✅ <i><a href="{ $url }">Тестовый платеж</a> успешно создан.</i>
+    .test-payment-error = ❌ <i>Ошибка при создании тестового платежа.</i>
+    .test-payment-confirmed = ✅ <i>Тестовый платеж успешно обработан.</i>
 
-ntf-broadcast-deleted-success =
-    ✅ Рассылка <code>{ $task_id }</code> успешно удалена.
+ntf-subscription =
+    .plans-unavailable = ❌ <i>В данный момент нет доступных планов.</i>
+    .gateways-unavailable = ❌ <i>В данный момент нет доступных платежных систем.</i>
+    .renew-plan-unavailable = ❌ <i>Текущий план устарел и недоступен для продления.</i>
+    .payment-creation-failed = ❌ <i>Ошибка при создании платежа. Попробуйте позже.</i>
 
-    <blockquote>
-    • <b>Всего сообщений</b>: { $total_count }
-    • <b>Успешно удалено</b>: { $deleted_count }
-    • <b>Не удалось удалить</b>: { $failed_count }
-    </blockquote>
+ntf-broadcast =
+    .message = { $content }
+    .text-too-long = ❌ Превышено максимальное кол-во символов ({ max_limit }).
+    .list-empty = ❌ <i>Список рассылок пуст.</i>
+    .plans-unavailable = ❌ <i>Нет доступных планов.</i>
+    .audience-unavailable = ❌ <i>Нет пользователей для выбранной аудитории.</i>
+    .content-empty = ❌ <i>Контент пуст.</i>
+    .content-saved = ✅ <i>Контент успешно сохранен.</i>
 
-ntf-trial-unavailable = <i>❌ Пробная подписка временно недоступна.</i>
+    .not-cancelable = ❌ <i>Рассылку невозможно отменить.</i>
+    .canceled = ✅ <i>Рассылка успешно отменена.</i>
+    .deleting = ⚠️ <i>Выполняется удаление отправленных сообщений.</i>
+    .already-deleted = ❌ <i>Рассылка уже удалена или находится в процессе удаления.</i>
 
-ntf-importer-not-file = <i>⚠️ Отправьте базу данных в виде файла.</i>
-ntf-importer-db-invalid = <i>❌ Этот файл не может быть импортирован.</i>
-ntf-importer-db-failed = <i>❌ Ошибка при импорте базы данных.</i>
-ntf-importer-exported-users-empty =  <i>❌ Список пользователей в базе данных пуст.</i>
-ntf-importer-internal-squads-empty = <i>❌ Выберите хотя бы один внутренний сквад.</i>
-ntf-importer-import-started = <i>✅ Импорт пользователей запущен, ожидайте...</i>
-ntf-importer-sync-started = <i>✅ Синхронизация пользователей запущена, ожидайте...</i>
-ntf-importer-users-not-found = <i>❌ Не удалось найти пользователей для синхронизации.</i>
-ntf-importer-not-support = <i>⚠️ Импорт всех данных из 3xui-shop временно недоступен. Вы можете воспользоваться импортом из панели 3X-UI!</i>
-ntf-importer-sync-already-running = <i>⚠️ Синхронизация пользователей уже была запущена, ожидайте...</i>
+    .deleted-success =
+        ✅ Рассылка <code>{ $task_id }</code> успешно удалена.
+
+        <blockquote>
+        • <b>Всего сообщений</b>: { $total_count }
+        • <b>Удалено</b>: { $deleted_count }
+        • <b>Не удалось удалить</b>: { $failed_count }
+        </blockquote>
+
+ntf-importer =
+    .not-file = ⚠️ <i>Отправьте базу данных в виде файла.</i>
+    .db-failed = ❌ <i>Ошибка при экспорте пользователей из базы данных.</i>
+    .users-empty = ❌ <i>Список пользователей в базе данных пуст.</i>
+
+    .started = ✅ <i>Импорт запущен. Дождитесь завершения...</i>
+    .already-running = ⚠️ <i>Импорт уже выполняется. Пожалуйста, подождите.</i>
+
+ntf-sync =
+    .started = ✅ <i>Синхронизация запущена. Дождитесь завершения...</i>
+    .users-not-found = ❌ <i>Пользователи для синхронизации не найдены.</i>
+    .already-running = ⚠️ <i>Синхронизация уже выполняется. Пожалуйста, подождите.</i>
+
+ntf-menu-editor =
+    .button-saved = ✅ <i>Кнопка успешно сохранена.</i>
+
+ntf-devices =
+    .deleted = ✅ <i>Устройство удалено.</i>
+    .all-deleted = ✅ <i>Все устройства удалены.</i>
+    .reissued = ✅ <i>Подписка успешно перевыпущена.</i>

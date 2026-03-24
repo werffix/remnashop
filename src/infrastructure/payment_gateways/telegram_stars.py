@@ -6,14 +6,15 @@ from aiogram.types import LabeledPrice
 from fastapi import Request
 from loguru import logger
 
+from src.application.dto import PaymentResultDto
 from src.core.enums import TransactionStatus
-from src.infrastructure.database.models.dto import PaymentResult
 
 from .base import BasePaymentGateway
 
 
+# https://core.telegram.org/api/stars/
 class TelegramStarsGateway(BasePaymentGateway):
-    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResult:
+    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
         prices = [LabeledPrice(label=self.data.currency, amount=int(amount))]
         payment_id = uuid.uuid4()
 
@@ -26,11 +27,11 @@ class TelegramStarsGateway(BasePaymentGateway):
                 prices=prices,
             )
 
-            return PaymentResult(id=payment_id, url=payment_url)
+            return PaymentResultDto(id=payment_id, url=payment_url)
 
-        except Exception as exception:
-            logger.exception(f"An unexpected error occurred while creating payment: {exception}")
+        except Exception as e:
+            logger.exception(f"An unexpected error occurred while creating payment: {e}")
             raise
 
     async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
-        raise NotImplementedError
+        raise NotImplementedError()

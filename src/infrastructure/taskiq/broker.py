@@ -23,6 +23,7 @@ def create_broker(config: AppConfig) -> RedisStreamBroker:
 
 
 broker = create_broker(config=AppConfig.get())
+
 broker.with_middlewares(
     *(
         ErrorMiddleware(),

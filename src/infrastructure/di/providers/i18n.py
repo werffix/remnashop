@@ -1,21 +1,28 @@
 from typing import Optional
 
-from dishka import Provider, Scope, provide
+from adaptix import Retort
+from dishka import AnyOf, Provider, Scope, provide
 from dishka.integrations.aiogram import AiogramMiddlewareData
-from fluentogram import TranslatorHub, TranslatorRunner
 from fluentogram.storage import FileStorage
 from loguru import logger
 
+from src.application.common import TranslatorHub as TranslatorHubProtocol
+from src.application.common import TranslatorRunner as TranslatorRunnerProtocol
+from src.application.dto import UserDto
 from src.core.config import AppConfig
 from src.core.constants import USER_KEY
-from src.infrastructure.database.models.dto import UserDto
+from src.infrastructure.services import TranslatorHubImpl
 
 
 class I18nProvider(Provider):
     scope = Scope.APP
 
     @provide
-    def get_hub(self, config: AppConfig) -> TranslatorHub:
+    def get_translator_hub(
+        self,
+        config: AppConfig,
+        retort: Retort,
+    ) -> AnyOf[TranslatorHubProtocol, TranslatorHubImpl]:
         storage = FileStorage(path=config.translations_dir / "{locale}")
         locales_map: dict[str, tuple[str, ...]] = {}
 
@@ -26,9 +33,7 @@ class I18nProvider(Provider):
             locales_map[locale_code] = tuple(fallback_chain)
 
         if config.default_locale not in locales_map:
-            locales_map[config.default_locale] = tuple(
-                config.default_locale,
-            )
+            locales_map[config.default_locale] = (config.default_locale,)
 
         logger.debug(
             f"Loaded TranslatorHub with locales: "
@@ -36,23 +41,32 @@ class I18nProvider(Provider):
             f"default={config.default_locale.value}"
         )
 
-        return TranslatorHub(locales_map, root_locale=config.default_locale, storage=storage)
+        return TranslatorHubImpl(
+            locales_map,
+            root_locale=config.default_locale,
+            storage=storage,
+            retort=retort,
+        )
 
+
+class I18nAiogramProvider(Provider):
     @provide(scope=Scope.REQUEST)
     def get_translator(
         self,
         config: AppConfig,
-        hub: TranslatorHub,
+        translator_hub: TranslatorHubProtocol,
         middleware_data: AiogramMiddlewareData,
-    ) -> TranslatorRunner:
+    ) -> TranslatorRunnerProtocol:
         user: Optional[UserDto] = middleware_data.get(USER_KEY)
+        locale = user.language if user else config.default_locale
+        return translator_hub.get_translator_by_locale(locale=locale)
 
-        if user:
-            logger.debug(f"Translator for user '{user.telegram_id}' with locale={user.language}")
-            return hub.get_translator_by_locale(locale=user.language)
 
-        else:
-            logger.debug(
-                f"Translator for anonymous user with default locale={config.default_locale}"
-            )
-            return hub.get_translator_by_locale(locale=config.default_locale)
+class I18nTaskiqProvider(Provider):
+    @provide(scope=Scope.REQUEST)
+    def get_translator(
+        self,
+        config: AppConfig,
+        translator_hub: TranslatorHubProtocol,
+    ) -> TranslatorRunnerProtocol:
+        return translator_hub.get_translator_by_locale(locale=config.default_locale)

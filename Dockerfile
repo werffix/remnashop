@@ -2,6 +2,8 @@ FROM ghcr.io/astral-sh/uv:python3.12-alpine AS builder
 
 WORKDIR /opt/remnashop
 
+RUN apk add --no-cache git
+
 COPY pyproject.toml uv.lock ./
 
 RUN uv sync --locked --no-dev --no-cache --compile-bytecode \

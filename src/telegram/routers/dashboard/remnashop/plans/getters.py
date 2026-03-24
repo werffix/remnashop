@@ -1,0 +1,352 @@
+from decimal import Decimal
+from typing import Any, Optional, Union
+
+from adaptix import Retort
+from aiogram_dialog import DialogManager
+from dishka import FromDishka
+from dishka.integrations.aiogram_dialog import inject
+from remnapy import RemnawaveSDK
+from remnapy.enums.users import TrafficLimitStrategy
+
+from src.application.common import TranslatorRunner
+from src.application.common.dao import PlanDao
+from src.application.dto import PlanDto, PlanDurationDto, PlanPriceDto
+from src.application.services import BotService
+from src.core.enums import Currency, PlanAvailability, PlanType
+
+
+@inject
+async def plans_getter(
+    dialog_manager: DialogManager,
+    plan_dao: FromDishka[PlanDao],
+    i18n: FromDishka[TranslatorRunner],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plans: list[PlanDto] = await plan_dao.get_all()
+
+    formatted_plans = [
+        {
+            "id": plan.id,
+            "name": i18n.get(plan.name),
+            "is_active": plan.is_active,
+        }
+        for plan in plans
+    ]
+
+    return {
+        "has_plans": bool(plans),
+        "plans": formatted_plans,
+    }
+
+
+@inject
+async def export_getter(
+    dialog_manager: DialogManager,
+    plan_dao: FromDishka[PlanDao],
+    i18n: FromDishka[TranslatorRunner],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plans: list[PlanDto] = await plan_dao.get_all()
+    selected_plans = dialog_manager.dialog_data.get("selected_plans", [])
+
+    formatted_plans = [
+        {
+            "id": plan.id,
+            "name": i18n.get(plan.name),
+            "selected": plan.id in selected_plans,
+        }
+        for plan in plans
+    ]
+
+    return {
+        "plans": formatted_plans,
+    }
+
+
+@inject
+async def configurator_getter(
+    dialog_manager: DialogManager,
+    bot_service: FromDishka[BotService],
+    i18n: FromDishka[TranslatorRunner],
+    retort: FromDishka[Retort],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
+
+    if raw_plan is None:
+        plan = PlanDto(
+            durations=[
+                PlanDurationDto(
+                    days=7,
+                    prices=[
+                        PlanPriceDto(currency=Currency.USD, price=Decimal(0.5)),
+                        PlanPriceDto(currency=Currency.XTR, price=Decimal(30)),
+                        PlanPriceDto(currency=Currency.RUB, price=Decimal(50)),
+                    ],
+                ),
+                PlanDurationDto(
+                    days=30,
+                    prices=[
+                        PlanPriceDto(currency=Currency.USD, price=Decimal(1)),
+                        PlanPriceDto(currency=Currency.XTR, price=Decimal(60)),
+                        PlanPriceDto(currency=Currency.RUB, price=Decimal(100)),
+                    ],
+                ),
+                PlanDurationDto(
+                    days=365,
+                    prices=[
+                        PlanPriceDto(currency=Currency.USD, price=Decimal(10)),
+                        PlanPriceDto(currency=Currency.XTR, price=Decimal(600)),
+                        PlanPriceDto(currency=Currency.RUB, price=Decimal(1000)),
+                    ],
+                ),
+                PlanDurationDto(
+                    days=0,
+                    prices=[
+                        PlanPriceDto(currency=Currency.USD, price=Decimal(100)),
+                        PlanPriceDto(currency=Currency.XTR, price=Decimal(6000)),
+                        PlanPriceDto(currency=Currency.RUB, price=Decimal(10000)),
+                    ],
+                ),
+            ],
+        )
+        dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(plan)
+    else:
+        plan = retort.load(raw_plan, PlanDto)
+
+    helpers = {
+        "name": i18n.get(plan.name),
+        "is_edit": dialog_manager.dialog_data.get("is_edit", False),
+        "is_unlimited_traffic": plan.is_unlimited_traffic,
+        "is_unlimited_devices": plan.is_unlimited_devices,
+        "plan_type": plan.type,
+        "availability_type": plan.availability,
+        "plan_url": f"{await bot_service.get_plan_url(plan.public_code)}"
+        if plan.public_code
+        else False,
+    }
+
+    data: dict = retort.dump(plan)
+    data.update(helpers)
+    return data
+
+
+@inject
+async def name_getter(
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
+    return {"name": plan.name}
+
+
+@inject
+async def description_getter(
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
+    return {"description": plan.description}
+
+
+@inject
+async def tag_getter(
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
+    return {"tag": plan.tag}
+
+
+@inject
+async def type_getter(
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
+    return {
+        "is_trial": plan.is_trial,
+        "types": list(PlanType),
+    }
+
+
+async def availability_getter(dialog_manager: DialogManager, **kwargs: Any) -> dict[str, Any]:
+    return {"availability": list(PlanAvailability)}
+
+
+@inject
+async def traffic_getter(
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
+
+    strategys = [
+        {
+            "strategy": strategy,
+            "selected": strategy.name == plan.traffic_limit_strategy,
+        }
+        for strategy in TrafficLimitStrategy
+    ]
+
+    return {"strategys": strategys}
+
+
+@inject
+async def durations_getter(
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
+
+    durations = [retort.dump(duration) for duration in plan.durations]
+
+    return {
+        "deletable": len(durations) > 1,
+        "durations": durations,
+    }
+
+
+def get_prices_for_duration(
+    durations: list[PlanDurationDto],
+    target_days: int,
+) -> Optional[list[PlanPriceDto]]:
+    for duration in durations:
+        if duration.days == target_days:
+            return duration.prices
+    return []
+
+
+@inject
+async def prices_getter(
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
+    selected_duration = dialog_manager.dialog_data["selected_duration"]
+    prices = get_prices_for_duration(plan.durations, selected_duration)
+    prices_data = [retort.dump(price) for price in prices] if prices else []
+
+    return {
+        "duration": selected_duration,
+        "prices": prices_data,
+    }
+
+
+async def price_getter(dialog_manager: DialogManager, **kwargs: Any) -> dict[str, Any]:
+    selected_duration = dialog_manager.dialog_data.get("selected_duration")
+    selected_currency = dialog_manager.dialog_data.get("selected_currency")
+    return {
+        "duration": selected_duration,
+        "currency": selected_currency,
+    }
+
+
+@inject
+async def allowed_users_getter(
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
+    return {"allowed_users": plan.allowed_user_ids if plan.allowed_user_ids else []}
+
+
+@inject
+async def squads_getter(
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    remnawave_sdk: FromDishka[RemnawaveSDK],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
+
+    internal_response = await remnawave_sdk.internal_squads.get_internal_squads()
+    internal_dict = {s.uuid: s.name for s in internal_response.internal_squads}
+
+    if not plan.internal_squads:
+        internal_squads_data: Union[str, bool] = False
+    else:
+        internal_squads_data = ", ".join(
+            internal_dict.get(squad, str(squad)) for squad in plan.internal_squads
+        )
+
+    external_response = await remnawave_sdk.external_squads.get_external_squads()
+    external_dict = {s.uuid: s.name for s in external_response.external_squads}
+    external_squad_data = external_dict.get(plan.external_squad) if plan.external_squad else False
+
+    return {
+        "internal_squads": internal_squads_data,
+        "external_squad": external_squad_data,
+    }
+
+
+@inject
+async def internal_squads_getter(
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    remnawave_sdk: FromDishka[RemnawaveSDK],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
+
+    result = await remnawave_sdk.internal_squads.get_internal_squads()
+    existing_squad_uuids = {squad.uuid for squad in result.internal_squads}
+
+    if plan.internal_squads:
+        plan_squad_uuids_set = set(plan.internal_squads)
+        valid_squad_uuids_set = plan_squad_uuids_set.intersection(existing_squad_uuids)
+        plan.internal_squads = list(valid_squad_uuids_set)
+
+    dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(plan)
+
+    squads = [
+        {
+            "uuid": squad.uuid,
+            "name": squad.name,
+            "selected": True if squad.uuid in plan.internal_squads else False,
+        }
+        for squad in result.internal_squads
+    ]
+
+    return {
+        "squads": squads,
+    }
+
+
+@inject
+async def external_squads_getter(
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    remnawave_sdk: FromDishka[RemnawaveSDK],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
+
+    result = await remnawave_sdk.external_squads.get_external_squads()
+    existing_squad_uuids = {squad.uuid for squad in result.external_squads}
+
+    if plan.external_squad and plan.external_squad not in existing_squad_uuids:
+        plan.external_squad = None
+
+    dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(plan)
+
+    squads = [
+        {
+            "uuid": squad.uuid,
+            "name": squad.name,
+            "selected": True if squad.uuid == plan.external_squad else False,
+        }
+        for squad in result.external_squads
+    ]
+
+    return {
+        "squads": squads,
+    }

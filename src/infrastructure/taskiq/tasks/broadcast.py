@@ -2,187 +2,235 @@ import asyncio
 from typing import Optional, cast
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramRetryAfter
 from dishka.integrations.taskiq import FromDishka, inject
 from loguru import logger
 
+from src.application.common import Notifier
+from src.application.common.dao import BroadcastDao
+from src.application.dto import BroadcastDto, BroadcastMessageDto, UserDto
+from src.application.use_cases.broadcast.commands.lifecycle import (
+    FinishBroadcast,
+    FinishBroadcastDto,
+)
+from src.application.use_cases.broadcast.commands.messages import (
+    BulkUpdateBroadcastMessages,
+    InitializeBroadcastMessages,
+    InitializeBroadcastMessagesDto,
+    UpdateBroadcastMessageStatus,
+    UpdateBroadcastMessageStatusDto,
+)
+from src.application.use_cases.broadcast.queries.audience import (
+    GetBroadcastAudienceUsers,
+    GetBroadcastAudienceUsersDto,
+)
+from src.application.use_cases.misc.commands.maintenance import ClearOldBroadcasts
+from src.core.constants import BATCH_DELAY, BATCH_SIZE_20
 from src.core.enums import BroadcastMessageStatus, BroadcastStatus
 from src.core.utils.iterables import chunked
-from src.core.utils.message_payload import MessagePayload
-from src.infrastructure.database.models.dto import BroadcastDto, BroadcastMessageDto, UserDto
 from src.infrastructure.taskiq.broker import broker
-from src.services.broadcast import BroadcastService
-from src.services.notification import NotificationService
 
 
 @broker.task
-@inject
+@inject(patch_module=True)
 async def send_broadcast_task(
     broadcast: BroadcastDto,
-    users: list[UserDto],
-    payload: MessagePayload,
-    notification_service: FromDishka[NotificationService],
-    broadcast_service: FromDishka[BroadcastService],
+    plan_id: Optional[int],
+    broadcast_dao: FromDishka[BroadcastDao],
+    get_broadcast_audience_users: FromDishka[GetBroadcastAudienceUsers],
+    initialize_broadcast_messages: FromDishka[InitializeBroadcastMessages],
+    update_broadcast_message_status: FromDishka[UpdateBroadcastMessageStatus],
+    finish_broadcast: FromDishka[FinishBroadcast],
+    notifier: FromDishka[Notifier],
 ) -> None:
-    broadcast_id = cast(int, broadcast.id)
+    task_id = broadcast.task_id
+
+    users = await get_broadcast_audience_users.system(
+        GetBroadcastAudienceUsersDto(broadcast.audience, plan_id)
+    )
+
+    if not users:
+        logger.warning(f"No users found for broadcast '{task_id}'")
+        await finish_broadcast.system(FinishBroadcastDto(task_id, BroadcastStatus.COMPLETED))
+        return
+
+    messages = [
+        BroadcastMessageDto(
+            user_telegram_id=user.telegram_id,
+            status=BroadcastMessageStatus.PENDING,
+        )
+        for user in users
+    ]
+
+    messages = await initialize_broadcast_messages.system(
+        InitializeBroadcastMessagesDto(task_id, messages)
+    )
+
     total_users = len(users)
     loop = asyncio.get_running_loop()
     start_time = loop.time()
+    total_retry_time = 0.0
+    semaphore = asyncio.Semaphore(BATCH_SIZE_20)
 
-    logger.info(f"Started sending broadcast '{broadcast_id}', total users: {total_users}")
+    logger.info(f"Started sending broadcast '{task_id}', total users: {total_users}")
 
-    try:
-        broadcast_messages = await broadcast_service.create_messages(
-            broadcast_id,
-            [
-                BroadcastMessageDto(user_id=user.telegram_id, status=BroadcastMessageStatus.PENDING)
-                for user in users
+    async def send_one(user: UserDto) -> tuple:
+        nonlocal total_retry_time
+        status = BroadcastMessageStatus.FAILED
+        msg_id = None
+        retry_time_for_user = 0.0
+
+        while True:
+            try:
+                async with semaphore:
+                    tg_message = await notifier.notify_user(user, payload=broadcast.payload)
+
+                if tg_message:
+                    status = BroadcastMessageStatus.SENT
+                    msg_id = tg_message.message_id
+
+                return user.telegram_id, status, msg_id, retry_time_for_user
+
+            except TelegramRetryAfter as error:
+                wait_time = error.retry_after + BATCH_DELAY
+                logger.warning(f"Flood wait {error.retry_after}s for user '{user.telegram_id}'")
+                await asyncio.sleep(wait_time)
+                retry_time_for_user += wait_time
+                total_retry_time += wait_time
+            except Exception:
+                logger.exception(f"Failed to send to '{user.telegram_id}'")
+                return user.telegram_id, status, msg_id, retry_time_for_user
+
+    for i, batch in enumerate(chunked(users, BATCH_SIZE_20), start=1):
+        if i % 5 == 0:
+            current = await broadcast_dao.get_by_task_id(task_id)
+            if not current or current.status == BroadcastStatus.CANCELED:
+                logger.info(f"Broadcast '{task_id}' was canceled")
+                break
+
+        tasks = [asyncio.create_task(send_one(user)) for user in batch]
+        results = await asyncio.gather(*tasks)
+
+        updates = UpdateBroadcastMessageStatusDto(
+            task_id=task_id,
+            messages=[
+                BroadcastMessageDto(
+                    id=next(m.id for m in messages if m.user_telegram_id == tg_id),
+                    user_telegram_id=tg_id,
+                    status=status,
+                    message_id=msg_id,
+                )
+                for tg_id, status, msg_id, _ in results
             ],
         )
-        logger.debug(
-            f"Created '{len(broadcast_messages)}' message DTOs for broadcast '{broadcast_id}'"
+
+        await update_broadcast_message_status.system(updates)
+
+        sent_count = sum(1 for _, status, _, _ in results if status == BroadcastMessageStatus.SENT)
+        failed_count = len(results) - sent_count
+        batch_retry_time = sum(r[3] for r in results)
+
+        logger.info(
+            f"Batch {i}: sent={sent_count}, failed={failed_count}, "
+            f"retry_time={batch_retry_time:.2f}s"
         )
-    except Exception:
-        logger.exception(f"Failed to create message DTOs for broadcast '{broadcast_id}'")
-        broadcast.status = BroadcastStatus.ERROR
-        await broadcast_service.update(broadcast)
-        return
-
-    async def send_message(user: UserDto, message: BroadcastMessageDto) -> None:
-        try:
-            tg_message = await notification_service.notify_user(user=user, payload=payload)
-            if tg_message:
-                message.message_id = tg_message.message_id
-                message.status = BroadcastMessageStatus.SENT
-            else:
-                message.status = BroadcastMessageStatus.FAILED
-        except Exception:
-            logger.exception(
-                f"Failed to send broadcast '{broadcast_id}' message for '{user.telegram_id}'",
-            )
-            message.status = BroadcastMessageStatus.FAILED
-
-    user_message_pairs = list(zip(users, broadcast_messages))
-    last_known_status: Optional[BroadcastStatus] = broadcast.status
-
-    for i, batch in enumerate(chunked(user_message_pairs, 20), start=1):
-        batch_start = loop.time()
-
-        last_known_status = await broadcast_service.get_status(broadcast.task_id)
-        if last_known_status == BroadcastStatus.CANCELED:
-            break
-
-        tasks = [send_message(u, m) for u, m in batch]
-        await asyncio.gather(*tasks)
-
-        _, messages_batch = zip(*batch)
-        await broadcast_service.bulk_update_messages(list(messages_batch))
-
-        batch_elapsed = loop.time() - batch_start
-        logger.info(f"Batch {i}: sent {len(batch)} messages in {batch_elapsed:.2f}s")
-
-        wait_time = 1.0 - batch_elapsed
-        if wait_time > 0:
-            await asyncio.sleep(wait_time)
-
-    broadcast.success_count = sum(
-        1 for m in broadcast_messages if m.status == BroadcastMessageStatus.SENT
-    )
-    broadcast.failed_count = sum(
-        1 for m in broadcast_messages if m.status == BroadcastMessageStatus.FAILED
-    )
-
-    broadcast.status = (
-        BroadcastStatus.CANCELED
-        if last_known_status == BroadcastStatus.CANCELED
-        else BroadcastStatus.COMPLETED
-    )
-
-    await broadcast_service.update(broadcast)
 
     total_elapsed = loop.time() - start_time
-    logger.info(
-        f"Finished broadcast '{broadcast_id}' in {total_elapsed:.2f}s "
-        f"(sent: {broadcast.success_count}, failed: {broadcast.failed_count})"
+    await finish_broadcast.system(FinishBroadcastDto(task_id, BroadcastStatus.COMPLETED))
+    logger.success(
+        f"Broadcast '{task_id}' finished in {total_elapsed:.2f}s "
+        f"with total retry time {total_retry_time:.2f}s"
     )
 
 
 @broker.task
-@inject
+@inject(patch_module=True)
 async def delete_broadcast_task(
     broadcast: BroadcastDto,
     bot: FromDishka[Bot],
-    broadcast_service: FromDishka[BroadcastService],
+    bulk_update_broadcast_messages: FromDishka[BulkUpdateBroadcastMessages],
 ) -> tuple[int, int, int]:
     broadcast_id = cast(int, broadcast.id)
-    logger.info(f"Started deleting messages for broadcast '{broadcast_id}'")
 
     if not broadcast.messages:
         logger.error(f"Messages list is empty for broadcast '{broadcast_id}', aborting")
         raise ValueError(f"Broadcast '{broadcast_id}' messages is empty")
 
+    logger.info(f"Started deleting messages for broadcast '{broadcast_id}'")
+
     deleted_count = 0
-    failed_count = 0
     total_messages = len(broadcast.messages)
+    total_retry_time = 0.0
+
     loop = asyncio.get_running_loop()
     start_time = loop.time()
+    semaphore = asyncio.Semaphore(BATCH_SIZE_20)
 
-    async def delete_message(message: BroadcastMessageDto) -> BroadcastMessageDto:
-        user_id = message.user_id
-        message_id = message.message_id
+    async def delete_one(message: BroadcastMessageDto) -> tuple[BroadcastMessageDto, float]:
+        nonlocal total_retry_time
+        retry_time_for_msg = 0.0
 
-        if message.status not in (BroadcastMessageStatus.SENT, BroadcastMessageStatus.EDITED):
-            return message
-        if not message_id:
-            logger.warning(f"Skipping deletion for user '{user_id}'. No 'message_id'")
-            return message
+        if (
+            message.status not in (BroadcastMessageStatus.SENT, BroadcastMessageStatus.EDITED)
+            or not message.message_id
+        ):
+            return message, retry_time_for_msg
 
-        try:
-            deleted = await bot.delete_message(chat_id=user_id, message_id=message_id)
-            if deleted:
-                message.status = BroadcastMessageStatus.DELETED
-            else:
-                logger.debug(f"Deletion FAILED for user '{user_id}'. ID: '{message_id}'")
-        except Exception:
-            logger.exception(f"Exception deleting message for user '{user_id}'. ID: '{message_id}'")
-        return message
+        while True:
+            try:
+                async with semaphore:
+                    if await bot.delete_message(
+                        chat_id=message.user_telegram_id, message_id=message.message_id
+                    ):
+                        message.status = BroadcastMessageStatus.DELETED
 
-    for i, batch in enumerate(chunked(broadcast.messages, 20), start=1):
-        batch_start = loop.time()
-        tasks = [delete_message(m) for m in batch]
+                return message, retry_time_for_msg
+
+            except TelegramRetryAfter as error:
+                wait_time = error.retry_after + BATCH_DELAY
+                logger.warning(
+                    f"Flood wait {error.retry_after}s for user '{message.user_telegram_id}'"
+                )
+                await asyncio.sleep(wait_time)
+                retry_time_for_msg += wait_time
+                total_retry_time += wait_time
+
+            except Exception:
+                logger.exception(
+                    f"Exception deleting message for user '{message.user_telegram_id}'"
+                )
+                return message, retry_time_for_msg
+
+    for i, batch in enumerate(chunked(broadcast.messages, BATCH_SIZE_20), start=1):
+        tasks = [asyncio.create_task(delete_one(m)) for m in batch]
         results = await asyncio.gather(*tasks)
 
-        deleted_count += sum(1 for m in results if m.status == BroadcastMessageStatus.DELETED)
-        failed_count += sum(1 for m in results if m.status != BroadcastMessageStatus.DELETED)
-        await broadcast_service.bulk_update_messages(results)
+        updated_messages = [r[0] for r in results]
+        batch_retry_time = sum(r[1] for r in results)
 
-        batch_elapsed = loop.time() - batch_start
-        logger.info(f"Batch {i}: processed {len(batch)} messages in {batch_elapsed:.2f}s")
+        await bulk_update_broadcast_messages.system(updated_messages)
 
-        wait_time = 1.0 - batch_elapsed
-        if wait_time > 0:
-            await asyncio.sleep(wait_time)
+        batch_deleted = sum(
+            1 for m in updated_messages if m.status == BroadcastMessageStatus.DELETED
+        )
+        deleted_count += batch_deleted
+
+        logger.info(f"Batch {i}: deleted={batch_deleted}, retry_time={batch_retry_time:.2f}s")
+
+        if batch_retry_time == 0:
+            await asyncio.sleep(BATCH_DELAY)
 
     total_elapsed = loop.time() - start_time
-    logger.info(
-        f"Deletion finished for broadcast '{broadcast_id}'. "
-        f"Total: {total_messages}, Deleted: {deleted_count}, Failed: {failed_count}, "
-        f"Total time: {total_elapsed:.2f}s"
+    logger.success(
+        f"Deletion finished for broadcast '{broadcast_id}' "
+        f"Total: {total_messages}, Deleted: {deleted_count}, "
+        f"Time: {total_elapsed:.2f}s, Retry time: {total_retry_time:.2f}s"
     )
-    return total_messages, deleted_count, failed_count
+
+    return total_messages, deleted_count, total_messages - deleted_count
 
 
 @broker.task(schedule=[{"cron": "0 0 */7 * *"}])
-@inject
-async def delete_broadcasts_task(broadcast_service: FromDishka[BroadcastService]) -> None:
-    broadcasts = await broadcast_service.get_all()
-
-    if not broadcasts:
-        logger.debug("No broadcasts found to delete")
-        return
-
-    old_broadcasts = [bc for bc in broadcasts if bc.has_old]
-    logger.debug(f"Found '{len(old_broadcasts)}' old broadcasts to delete")
-
-    for broadcast in old_broadcasts:
-        await broadcast_service.delete_broadcast(broadcast.id)  # type: ignore[arg-type]
-        logger.debug(f"Broadcast '{broadcast.id}' deleted")
+@inject(patch_module=True)
+async def delete_broadcasts_task(clear_old_broadcasts: FromDishka[ClearOldBroadcasts]) -> None:
+    await clear_old_broadcasts.system()

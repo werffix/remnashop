@@ -9,17 +9,18 @@ from fastapi import Request
 from httpx import AsyncClient, HTTPStatusError
 from loguru import logger
 
+from src.application.dto import (
+    PaymentGatewayDto,
+    PaymentResultDto,
+)
+from src.application.dto.payment_gateway import YookassaGatewaySettingsDto
 from src.core.config import AppConfig
 from src.core.enums import TransactionStatus
-from src.infrastructure.database.models.dto import (
-    PaymentGatewayDto,
-    PaymentResult,
-    YookassaGatewaySettingsDto,
-)
 
 from .base import BasePaymentGateway
 
 
+# https://yookassa.ru/developers/
 class YookassaGateway(BasePaymentGateway):
     _client: AsyncClient
 
@@ -57,9 +58,10 @@ class YookassaGateway(BasePaymentGateway):
             ),
         )
 
-    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResult:
+    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
         payload = await self._create_payment_payload(str(amount), details)
         headers = {"Idempotence-Key": str(uuid.uuid4())}
+        logger.debug(f"Creating payment payload: {payload}")
 
         try:
             response = await self._client.post("v3/payments", json=payload, headers=headers)
@@ -67,17 +69,17 @@ class YookassaGateway(BasePaymentGateway):
             data = orjson.loads(response.content)
             return self._get_payment_data(data)
 
-        except HTTPStatusError as exception:
+        except HTTPStatusError as e:
             logger.error(
                 f"HTTP error creating payment. "
-                f"Status: '{exception.response.status_code}', Body: {exception.response.text}"
+                f"Status: '{e.response.status_code}', Body: {e.response.text}"
             )
             raise
-        except (KeyError, orjson.JSONDecodeError) as exception:
-            logger.error(f"Failed to parse response. Error: {exception}")
+        except (KeyError, orjson.JSONDecodeError) as e:
+            logger.error(f"Failed to parse response. Error: {e}")
             raise
-        except Exception as exception:
-            logger.exception(f"An unexpected error occurred while creating payment: {exception}")
+        except Exception as e:
+            logger.exception(f"An unexpected error occurred while creating payment: {e}")
             raise
 
     async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
@@ -127,7 +129,7 @@ class YookassaGateway(BasePaymentGateway):
             },
         }
 
-    def _get_payment_data(self, data: dict[str, Any]) -> PaymentResult:
+    def _get_payment_data(self, data: dict[str, Any]) -> PaymentResultDto:
         payment_id_str = data.get("id")
 
         if not payment_id_str:
@@ -139,7 +141,7 @@ class YookassaGateway(BasePaymentGateway):
         if not payment_url:
             raise KeyError("Invalid response from YooKassa API: missing 'confirmation_url'")
 
-        return PaymentResult(id=UUID(payment_id_str), url=str(payment_url))
+        return PaymentResultDto(id=UUID(payment_id_str), url=str(payment_url))
 
     def _verify_webhook(self, request: Request) -> bool:
         ip = self._get_ip(request.headers)

@@ -1,56 +1,58 @@
-# Layout
 space = {" "}
 empty = { "!empty!" }
 btn-test = Кнопка
 msg-test = Сообщение
-development = Временно недоступно!
+development = В разработке!
 test-payment = Тестовый платеж
-unlimited = ∞
 unknown = —
 
-unit-unlimited = { $value ->
-    [-1] { unlimited }
-    [0] { unlimited }
-    *[other] { $value }
-}
+development-promocode = Промокоды еще не реализованы, для мотивации и ускорения разработки можете закинуть монет.
 
-# Other
 payment-invoice-description = { purchase-type } подписки { $name } на { $duration }
-contact-support-help = Здравствуйте! Мне нужна помощь.
-contact-support-paysupport = Здравствуйте! Я бы хотел запросить возврат средств.
-contact-support-withdraw-points = Здравствуйте! Я бы хотел запросить обмен баллов.
-cmd-start = Перезапустить бота
-cmd-paysupport = Возврат средств
-cmd-help = Помощь
 
-referral-invite-message =
-    { space }
-    🚀 Привет! Хочешь стабильный и быстрый VPN?  
-    
-    ↘️ ЖМИ СЮДА И ПОПРОБУЙ БЕСПЛАТНО!
-    { $url }
+inline-invite =
+    .title = Пригласить друга
+    .description = Нажмите, чтобы отправить пригласительную ссылку!
+    .message =
+        🚀 Привет! Хочешь стабильный и быстрый VPN?
+        
+        { $bot_name } - поможет тебе с этим!
 
+        ↘️ ЖМИ КНОПКУ И ПОПРОБУЙ БЕСПЛАТНО!
+    .start = 🚀 Присоединиться
 
-# Headers
+message =
+    .withdraw-points = Здравствуйте! Я бы хотел запросить обмен баллов.
+    .paysupport = Здравствуйте! Я бы хотел запросить возврат средств.
+    .help = Здравствуйте! Мне нужна помощь.
+
+command =
+    .start = Перезапустить бота
+    .paysupport = Возврат средств
+    .rules = Условия использования
+    .help = Помощь
+
 hdr-user = <b>👤 Пользователь:</b>
 hdr-user-profile = <b>👤 Профиль:</b>
-
-hdr-subscription = { $is_trial ->
-    [1] <b>🎁 Пробная подписка:</b>
-    *[0] <b>💳 Подписка:</b>
-    }
-
-hdr-plan = <b>📦 План:</b>
 hdr-payment = <b>💰 Платеж:</b>
 hdr-error = <b>⚠️ Ошибка:</b>
 hdr-node = <b>🖥 Нода:</b>
 hdr-hwid = <b>📱 Устройство:</b>
 
-# Fragments
+hdr-subscription = { $is_trial ->
+    [1] <b>🎁 Пробная подписка:</b>
+    *[0] <b>💳 Подписка:</b>
+}
+
+hdr-plan = { $is_trial_plan ->
+    [1] <b>🎁 Пробный план:</b>
+    *[0] <b>📦 План:</b>
+}
+
 frg-user =
     <blockquote>
-    • <b>ID</b>: <code>{ $user_id }</code>
-    • <b>Имя</b>: { $user_name }
+    • <b>ID</b>: <code>{ NUMBER($telegram_id, useGrouping: 0) }</code>
+    • <b>Имя</b>: { $name }
     { $personal_discount ->
     [0] { empty }
     *[HAS] • <b>Ваша скидка</b>: { $personal_discount }%
@@ -59,19 +61,19 @@ frg-user =
 
 frg-user-info =
     <blockquote>
-    • <b>ID</b>: <code>{ $user_id }</code>
-    • <b>Имя</b>: { $user_name } { $username -> 
+    • <b>ID</b>: <code>{ NUMBER($telegram_id, useGrouping: 0) }</code> 
+    • <b>Имя</b>: { $name } { $username -> 
         [0] { empty }
-        *[HAS] (<a href="tg://user?id={ $user_id }">@{ $username }</a>)
+        *[HAS] (<a href="tg://user?id={ $telegram_id }">@{ $username }</a>)
     }
     </blockquote>
 
 frg-user-details =
     <blockquote>
-    • <b>ID</b>: <code>{ $user_id }</code>
-    • <b>Имя</b>: { $user_name } { $username -> 
+    • <b>ID</b>: <code>{ NUMBER($telegram_id, useGrouping: 0) }</code>
+    • <b>Имя</b>: { $name } { $username -> 
         [0] { space }
-        *[HAS] (<a href="tg://user?id={ $user_id }">@{ $username }</a>)
+        *[HAS] (<a href="tg://user?id={ $telegram_id }">@{ $username }</a>)
     }
     • <b>Роль</b>: { role }
     • <b>Язык</b>: { language }
@@ -118,7 +120,7 @@ frg-payment-amount = { $final_amount }{ $currency } { $discount_percent ->
 frg-plan-snapshot =
     <blockquote>
     • <b>План</b>: <code>{ $plan_name }</code>
-    • <b>Тип</b>: { plan-type }
+    • <b>Тип</b>: { plan-type } 
     • <b>Лимит трафика</b>: { $plan_traffic_limit }
     • <b>Лимит устройств</b>: { $plan_device_limit }
     • <b>Длительность</b>: { $plan_duration }
@@ -136,7 +138,10 @@ frg-plan-snapshot-comparison =
 frg-node-info =
     <blockquote>
     • <b>Название</b>: { $country } { $name }
-    • <b>Адрес</b>: <code>{ $address }:{ $port }</code>
+    • <b>Адрес</b>: <code>{ $address }{ $port ->
+    [0] { space }
+    *[HAS] :{ $port }</code>
+    }
     • <b>Трафик</b>: { $traffic_used } / { $traffic_limit }
     { $last_status_message -> 
     [0] { empty }
@@ -151,11 +156,22 @@ frg-node-info =
 frg-user-hwid =
     <blockquote>
     • <b>HWID</b>: <code>{ $hwid }</code>
-
-    • <b>Платформа</b>: { $platform }
-    • <b>Модель</b>: { $device_model }
-    • <b>Версия ОС</b>: { $os_version }
-    • <b>Агент</b>: { $user_agent }
+    { $platform ->
+    [0] { space }
+    *[HAS] • <b>Платформа</b>: { $platform }
+    }
+    { $device_model ->
+    [0] { space }
+    *[HAS] • <b>Модель</b>: { $device_model }
+    }
+    { $os_version ->
+    [0] { space }
+    *[HAS] • <b>Версия</b>: { $os_version }
+    }
+    { $user_agent ->
+    [0] { space }
+    *[HAS] • <b>Агент</b>: { $user_agent }
+    }
     </blockquote>
 
 frg-build-info =
@@ -170,24 +186,32 @@ frg-build-info =
     </blockquote>
     }
 
-# Roles
+role-owner = Владелец
 role-dev = Разработчик
 role-admin = Администратор
+role-preview = Наблюдатель
 role-user = Пользователь
 role = 
     { $role ->
-    [DEV] { role-dev }
-    [ADMIN] { role-admin }
-    *[USER] { role-user }
+    [5] { role-owner }
+    [4] { role-dev }
+    [3] { role-admin }
+    [2] { role-preview }
+    *[1] { role-user }
 }
 
+unlimited = ∞
 
-# Units
+unit-unlimited = { $value ->
+    [0] { unlimited }
+    *[other] { $value }
+}
+
 unit-device = { $value -> 
-    [-1] { unlimited }
+    [0] { unlimited }
     *[other] { $value } 
 } { $value ->
-    [-1] { space }
+    [0] { space }
     [one] устройство
     [few] устройства
     *[other] устройств
@@ -236,7 +260,6 @@ unit-year = { $value } { $value ->
 }
 
 
-# Types
 plan-type = { $plan_type -> 
     [TRAFFIC] Трафик
     [DEVICES] Устройства
@@ -261,7 +284,7 @@ availability-type = { $availability_type ->
     [EXISTING] Для существующих
     [INVITED] Для приглашенных
     [ALLOWED] Для разрешенных
-    [TRIAL] Для пробника
+    [LINK] По ссылке
     *[OTHER] { $availability_type }
 }
 
@@ -271,7 +294,14 @@ gateway-type = { $gateway_type ->
     [YOOMONEY] ЮMoney
     [CRYPTOMUS] Cryptomus
     [HELEKET] Heleket
+    [CRYPTOPAY] CryptoPay
+    [FREEKASSA] FreeKassa
+    [MULENPAY] MulenPay
+    [PAYMASTER] PayMaster
+    [PLATEGA] Platega
+    [ROBOKASSA] RoboKassa
     [URLPAY] UrlPay
+    [WATA] WATA
     *[OTHER] { $gateway_type }
 }
 
@@ -351,6 +381,13 @@ reward-strategy = { $reward_strategy_type ->
     [PERCENT] Процентная
     *[OTHER] { $reward_strategy_type }
     }
+
+button-type = { $button_type ->
+    [URL] Открыть ссылку
+    [COPY] Скопировать текст
+    [WEB_APP] Открыть веб-приложение
+    *[OTHER] { $button_type }
+}
 
 language = { $language ->
     [ar] Арабский

@@ -1,5 +1,5 @@
-from .uow import UnitOfWork
+from .uow import UnitOfWorkImpl
 
 __all__ = [
-    "UnitOfWork",
+    "UnitOfWorkImpl",
 ]

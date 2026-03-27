@@ -10,7 +10,7 @@ LOG_DIR: Final[Path] = BASE_DIR / "logs"
 
 DOMAIN_REGEX: Pattern[str] = re.compile(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$")
 TAG_REGEX: Pattern[str] = re.compile(r"^[A-Z0-9_]{1,16}$")
-URL_PATTERN: Pattern[str] = re.compile(r"^https?://.*$")
+URL_PATTERN: Pattern[str] = re.compile(r"^https://\S+$")
 USERNAME_PATTERN: Pattern[str] = re.compile(r"^@[a-zA-Z0-9_]{5,32}$")
 
 REPOSITORY: Final[str] = "https://github.com/snoups/remnashop"
@@ -22,13 +22,10 @@ REMNAWAVE_WEBHOOK_PATH: Final[str] = "/remnawave"
 
 IMPORTED_TAG: Final[str] = "IMPORTED"
 INLINE_QUERY_INVITE: Final[str] = "invite"
-DEEPLINK_PREFIX: Final[str] = "?start="
 REMNASHOP_PREFIX: Final[str] = "rs_"
 PAYMENT_PREFIX: Final[str] = "payment_"
 GOTO_PREFIX: Final[str] = "gt_"
 ENCRYPTED_PREFIX: Final[str] = "enc_"
-REFERRAL_PREFIX: Final[str] = "ref_"
-PLAN_PREFIX: Final[str] = "plan_"
 
 MIDDLEWARE_DATA_KEY: Final[str] = "middleware_data"
 CONTAINER_KEY: Final[str] = "dishka_container"

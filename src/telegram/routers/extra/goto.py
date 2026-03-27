@@ -6,10 +6,12 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
 
+from src.application.common.notifier import Notifier
 from src.application.dto import UserDto
 from src.application.use_cases.user.queries.plans import GetAvailablePlanByCode
-from src.core.constants import GOTO_PREFIX, PAYMENT_PREFIX, PLAN_PREFIX, TARGET_TELEGRAM_ID
-from src.telegram.states import DashboardUser, Subscription, state_from_string
+from src.core.constants import GOTO_PREFIX, PAYMENT_PREFIX, TARGET_TELEGRAM_ID
+from src.core.enums import Deeplink
+from src.telegram.states import DashboardUser, MainMenu, Subscription, state_from_string
 
 router = Router(name=__name__)
 
@@ -74,23 +76,24 @@ async def on_goto(callback: CallbackQuery, dialog_manager: DialogManager, user: 
 
 
 @inject
-@router.message(CommandStart(deep_link=True, ignore_case=True), F.text.contains(PLAN_PREFIX))
+@router.message(CommandStart(deep_link=True, ignore_case=True), F.text.contains(Deeplink.PLAN))
 async def on_goto_plan(
     message: Message,
     command: CommandObject,
     dialog_manager: DialogManager,
     user: UserDto,
     get_available_plan_by_code: FromDishka[GetAvailablePlanByCode],
+    notifier: FromDishka[Notifier],
 ) -> None:
     args = command.args or ""
-    public_code = args.removeprefix(PLAN_PREFIX)
+    public_code = args.removeprefix(Deeplink.PLAN.with_underscore)
     plan = await get_available_plan_by_code(user, public_code)
 
     # TODO: Handle brootforce of plan codes
 
     if not plan:
         logger.warning(f"{user.log} Plan with code '{public_code}' not found or not available")
-        await message.answer("Plan not found or not available.")
+        await notifier.notify_user(user=user, i18n_key="ntf-common.plan-not-found")
         return
 
     logger.info(f"{user.log} Redirected to plan '{public_code}'")
@@ -104,3 +107,19 @@ async def on_goto_plan(
         mode=StartMode.RESET_STACK,
         show_mode=ShowMode.DELETE_AND_SEND,
     )
+
+
+@router.message(CommandStart(deep_link=True, ignore_case=True), F.text.contains(Deeplink.INVITE))
+async def on_goto_invite(
+    message: Message,
+    command: CommandObject,
+    user: UserDto,
+    dialog_manager: DialogManager,
+) -> None:
+    if command.args == Deeplink.INVITE:
+        logger.info(f"{user.log} Redirected to invite menu")
+        await dialog_manager.start(
+            state=MainMenu.INVITE,
+            mode=StartMode.RESET_STACK,
+            show_mode=ShowMode.DELETE_AND_SEND,
+        )

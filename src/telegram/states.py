@@ -111,7 +111,6 @@ class DashboardRemnashop(StatesGroup):
     MAIN = State()
     ADMINS = State()
     ADVERTISING = State()
-    TRIAL_PERIOD = State()
 
 
 class RemnashopReferral(StatesGroup):

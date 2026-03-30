@@ -1,6 +1,5 @@
-from aiogram.types import CallbackQuery, Message
-from aiogram_dialog import DialogManager, ShowMode
-from aiogram_dialog.widgets.input import MessageInput
+from aiogram.types import CallbackQuery
+from aiogram_dialog import DialogManager
 from aiogram_dialog.widgets.kbd import Button
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
@@ -9,14 +8,12 @@ from loguru import logger
 from src.application.common import Notifier, Redirect
 from src.application.dto import MediaDescriptorDto, MessagePayloadDto, UserDto
 from src.application.use_cases.misc.queries.logs import GetLogs
-from src.application.use_cases.settings.commands.access import UpdateTrialDays
 from src.application.use_cases.user.commands.roles import RevokeRole
 from src.core.constants import LOG_DIR, USER_KEY
 from src.core.enums import MediaType
 from src.core.exceptions import LogsToFileDisabledError
 from src.core.logger import LOG_FILENAME
 from src.telegram.routers.dashboard.users.user.handlers import start_user_window
-from src.telegram.states import DashboardRemnashop
 from src.telegram.utils import is_double_click
 
 
@@ -91,25 +88,3 @@ async def on_role_revoke(
 
     await revoke_role(user, target_telegram_id)
     await redirect.to_main_menu(target_telegram_id)
-
-
-@inject
-async def on_trial_days_input(
-    message: Message,
-    widget: MessageInput,
-    dialog_manager: DialogManager,
-    notifier: FromDishka[Notifier],
-    update_trial_days: FromDishka[UpdateTrialDays],
-) -> None:
-    dialog_manager.show_mode = ShowMode.EDIT
-    user: UserDto = dialog_manager.middleware_data[USER_KEY]
-
-    if not message.text or not message.text.isdigit():
-        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
-        return
-
-    try:
-        await update_trial_days(user, int(message.text))
-        await dialog_manager.switch_to(state=DashboardRemnashop.TRIAL_PERIOD)
-    except ValueError:
-        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")

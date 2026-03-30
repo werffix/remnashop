@@ -2,7 +2,7 @@ from typing import Final
 
 from src.application.common import Interactor
 
-from .commands.access import ChangeAccessMode, TogglePayments, ToggleRegistration
+from .commands.access import ChangeAccessMode, TogglePayments, ToggleRegistration, UpdateTrialDays
 from .commands.currency import UpdateDefaultCurrency
 from .commands.notifications import ToggleNotification
 from .commands.referral import (
@@ -26,6 +26,7 @@ SETTINGS_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     TogglePayments,
     ToggleReferralSystem,
     ToggleRegistration,
+    UpdateTrialDays,
     UpdateChannelRequirement,
     UpdateReferralAccrualStrategy,
     UpdateReferralLevel,

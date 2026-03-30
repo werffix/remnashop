@@ -1,3 +1,6 @@
+from decimal import Decimal
+from uuid import uuid4
+
 from dataclasses import dataclass
 
 from loguru import logger
@@ -5,7 +8,7 @@ from loguru import logger
 from src.application.common import EventPublisher, Interactor
 from src.application.common.dao import ReferralDao, SettingsDao, SubscriptionDao, UserDao
 from src.application.common.uow import UnitOfWork
-from src.application.dto import ReferralRewardDto, TransactionDto, UserDto
+from src.application.dto import PlanSnapshotDto, PriceDetailsDto, ReferralRewardDto, TransactionDto, UserDto
 from src.application.events import ReferralRewardFailedEvent, ReferralRewardReceivedEvent
 from src.application.use_cases.referral.queries.calculations import (
     CalculateReferralReward,
@@ -19,7 +22,15 @@ from src.application.use_cases.user.commands.profile_edit import (
     ChangeUserPoints,
     ChangeUserPointsDto,
 )
-from src.core.enums import PurchaseType, ReferralAccrualStrategy, ReferralLevel, ReferralRewardType
+from src.core.enums import (
+    Currency,
+    PaymentGatewayType,
+    PurchaseType,
+    ReferralAccrualStrategy,
+    ReferralLevel,
+    ReferralRewardType,
+    TransactionStatus,
+)
 
 
 @dataclass(frozen=True)
@@ -152,15 +163,26 @@ class AssignReferralRewards(Interactor[AssignReferralRewardsDto, None]):
             logger.info("Referral system is disabled; reward assignment skipped")
             return
 
-        if (
-            settings.referral.accrual_strategy == ReferralAccrualStrategy.ON_FIRST_PAYMENT
-            and data.transaction.purchase_type != PurchaseType.NEW
-        ):
-            logger.info(
-                f"Skip rewards: transaction '{data.transaction.id}' purchase type "
-                f"'{data.transaction.purchase_type}' is not NEW"
-            )
-            return
+        match settings.referral.accrual_strategy:
+            case ReferralAccrualStrategy.ON_FIRST_PAYMENT:
+                if data.transaction.plan_snapshot.is_trial:
+                    logger.info("Skip rewards: trial activation is not eligible for first payment mode")
+                    return
+
+                if data.transaction.purchase_type != PurchaseType.NEW:
+                    logger.info(
+                        f"Skip rewards: transaction '{data.transaction.id}' purchase type "
+                        f"'{data.transaction.purchase_type}' is not NEW"
+                    )
+                    return
+            case ReferralAccrualStrategy.ON_TRIAL_ACTIVATION:
+                if not data.transaction.plan_snapshot.is_trial:
+                    logger.info("Skip rewards: non-trial purchase is not eligible for trial mode")
+                    return
+            case ReferralAccrualStrategy.ON_EACH_PAYMENT:
+                if data.transaction.plan_snapshot.is_trial:
+                    logger.info("Skip rewards: trial activation is not eligible for each payment mode")
+                    return
 
         referral, parent = await self.referral_dao.get_referral_chain(data.user.telegram_id)
 
@@ -223,3 +245,36 @@ class AssignReferralRewards(Interactor[AssignReferralRewardsDto, None]):
                 f"Issued '{reward_type}' reward '{reward_amount}' for referrer "
                 f"'{referrer.telegram_id}' (level '{level.name}')"
             )
+
+
+@dataclass(frozen=True)
+class AssignTrialReferralRewardsDto:
+    user: UserDto
+    plan_snapshot: PlanSnapshotDto
+
+
+class AssignTrialReferralRewards(Interactor[AssignTrialReferralRewardsDto, None]):
+    required_permission = None
+
+    def __init__(self, assign_referral_rewards: AssignReferralRewards) -> None:
+        self.assign_referral_rewards = assign_referral_rewards
+
+    async def _execute(self, actor: UserDto, data: AssignTrialReferralRewardsDto) -> None:
+        synthetic_transaction = TransactionDto(
+            payment_id=uuid4(),
+            user_telegram_id=data.user.telegram_id,
+            status=TransactionStatus.COMPLETED,
+            purchase_type=PurchaseType.NEW,
+            gateway_type=PaymentGatewayType.TELEGRAM_STARS,
+            pricing=PriceDetailsDto(
+                original_amount=Decimal(0),
+                discount_percent=0,
+                final_amount=Decimal(0),
+            ),
+            currency=Currency.USD,
+            plan_snapshot=data.plan_snapshot,
+        )
+
+        await self.assign_referral_rewards.system(
+            AssignReferralRewardsDto(user=data.user, transaction=synthetic_transaction)
+        )

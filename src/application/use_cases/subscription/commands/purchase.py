@@ -9,6 +9,10 @@ from src.application.common.dao import SubscriptionDao, TransactionDao, UserDao
 from src.application.common.uow import UnitOfWork
 from src.application.dto import PlanSnapshotDto, SubscriptionDto, TransactionDto, UserDto
 from src.application.events import TrialActivatedEvent
+from src.application.use_cases.referral.commands.rewards import (
+    AssignTrialReferralRewards,
+    AssignTrialReferralRewardsDto,
+)
 from src.core.enums import PurchaseType, SubscriptionStatus, TransactionStatus
 from src.core.exceptions import PurchaseError, TrialError
 from src.core.types import RemnaUserDto
@@ -39,6 +43,7 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
         event_publisher: EventPublisher,
         redirect: Redirect,
         i18n: TranslatorRunner,
+        assign_trial_referral_rewards: AssignTrialReferralRewards,
     ) -> None:
         self.uow = uow
         self.user_dao = user_dao
@@ -47,6 +52,7 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
         self.event_publisher = event_publisher
         self.redirect = redirect
         self.i18n = i18n
+        self.assign_trial_referral_rewards = assign_trial_referral_rewards
 
     async def _execute(self, actor: UserDto, data: ActivateTrialSubscriptionDto) -> None:
         user = data.user
@@ -95,6 +101,9 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
                 plan_duration=i18n_format_days(plan.duration),
             )
             await self.event_publisher.publish(event)
+            await self.assign_trial_referral_rewards.system(
+                AssignTrialReferralRewardsDto(user=user, plan_snapshot=plan)
+            )
             await self.redirect.to_success_trial(user.telegram_id)
             logger.info(
                 f"{actor.log} Trial subscription completed "

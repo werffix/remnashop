@@ -42,6 +42,7 @@ from src.application.dto.payment_gateway import (
     YooKassaGatewaySettingsDto,
     YooMoneyGatewaySettingsDto,
 )
+from src.infrastructure.payment_gateways.platega import PlategaGateway
 from src.application.events import UserPurchaseEvent
 from src.application.use_cases.gateways.queries.providers import GetPaymentGatewayInstance
 from src.application.use_cases.referral.commands.rewards import (
@@ -111,6 +112,7 @@ class CreatePaymentDto:
     pricing: PriceDetailsDto
     purchase_type: PurchaseType
     gateway_type: PaymentGatewayType
+    platega_payment_method: int | None = None
 
 
 class CreatePayment(Interactor[CreatePaymentDto, PaymentResultDto]):
@@ -163,10 +165,23 @@ class CreatePayment(Interactor[CreatePaymentDto, PaymentResultDto]):
                 )
                 return PaymentResultDto(id=transaction.payment_id, url=None)
 
-            payment: PaymentResultDto = await gateway_instance.handle_create_payment(
-                amount=data.pricing.final_amount,
-                details=details,
-            )
+            if (
+                data.gateway_type == PaymentGatewayType.PLATEGA
+                and isinstance(gateway_instance, PlategaGateway)
+            ):
+                if data.platega_payment_method is None:
+                    raise ValueError("Platega payment method is required")
+
+                payment = await gateway_instance.handle_create_payment(
+                    amount=data.pricing.final_amount,
+                    details=details,
+                    payment_method=data.platega_payment_method,
+                )
+            else:
+                payment = await gateway_instance.handle_create_payment(
+                    amount=data.pricing.final_amount,
+                    details=details,
+                )
 
             transaction.payment_id = payment.id
             await self.transaction_dao.create(transaction)
@@ -200,10 +215,32 @@ class CreateTestPayment(Interactor[PaymentGatewayType, PaymentResultDto]):
         test_pricing = PriceDetailsDto.test()
         test_plan_snapshot = PlanSnapshotDto.test()
 
-        payment: PaymentResultDto = await gateway_instance.handle_create_payment(
-            amount=test_pricing.final_amount,
-            details=i18n.get("test-payment"),
-        )
+        if gateway_type == PaymentGatewayType.PLATEGA and isinstance(
+            gateway_instance, PlategaGateway
+        ):
+            settings = gateway_instance.data.settings
+            if not isinstance(settings, PlategaGatewaySettingsDto):
+                raise ValueError("Invalid Platega settings")
+
+            if settings.sbp_enabled:
+                payment_method = 2
+            elif settings.card_enabled:
+                payment_method = 11
+            elif settings.crypto_enabled:
+                payment_method = 13
+            else:
+                raise ValueError("No Platega payment methods enabled")
+
+            payment = await gateway_instance.handle_create_payment(
+                amount=test_pricing.final_amount,
+                details=i18n.get("test-payment"),
+                payment_method=payment_method,
+            )
+        else:
+            payment = await gateway_instance.handle_create_payment(
+                amount=test_pricing.final_amount,
+                details=i18n.get("test-payment"),
+            )
 
         async with self.uow:
             transaction = TransactionDto(

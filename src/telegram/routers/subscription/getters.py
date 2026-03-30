@@ -9,12 +9,11 @@ from loguru import logger
 from src.application.common import TranslatorRunner
 from src.application.common.dao import PaymentGatewayDao, PlanDao, SettingsDao, SubscriptionDao
 from src.application.dto import PlanDto, PriceDetailsDto, UserDto
-from src.application.dto.payment_gateway import PlategaGatewaySettingsDto
 from src.application.services import PricingService
 from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.config import AppConfig
-from src.core.enums import PaymentGatewayType, PurchaseType
+from src.core.enums import PurchaseType
 from src.core.utils.i18n_helpers import (
     i18n_format_days,
     i18n_format_device_limit,
@@ -22,64 +21,6 @@ from src.core.utils.i18n_helpers import (
     i18n_format_traffic_limit,
 )
 from src.telegram.states import Subscription
-
-
-def _build_payment_methods(
-    gateways: list,
-    i18n: TranslatorRunner | None = None,
-) -> list[dict[str, Any]]:
-    payment_methods: list[dict[str, Any]] = []
-
-    for gateway in gateways:
-        if gateway.type == PaymentGatewayType.PLATEGA and isinstance(
-            gateway.settings, PlategaGatewaySettingsDto
-        ):
-            if gateway.settings.sbp_enabled:
-                payment_methods.append(
-                    {
-                        "id": "PLATEGA:2",
-                        "gateway_type": gateway.type,
-                        "payment_method": 2,
-                        "label": "СБП",
-                        "currency": gateway.currency.symbol,
-                    }
-                )
-            if gateway.settings.card_enabled:
-                payment_methods.append(
-                    {
-                        "id": "PLATEGA:11",
-                        "gateway_type": gateway.type,
-                        "payment_method": 11,
-                        "label": "Карточный эквайринг (Банковская карта)",
-                        "currency": gateway.currency.symbol,
-                    }
-                )
-            if gateway.settings.crypto_enabled:
-                payment_methods.append(
-                    {
-                        "id": "PLATEGA:13",
-                        "gateway_type": gateway.type,
-                        "payment_method": 13,
-                        "label": "Криптовалюта",
-                        "currency": gateway.currency.symbol,
-                    }
-                )
-            continue
-
-        payment_methods.append(
-            {
-                "id": gateway.type.value,
-                "gateway_type": gateway.type,
-                "payment_method": None,
-                "label": i18n.get("gateway-type", gateway_type=gateway.type)
-                if i18n
-                else gateway.type.value,
-                "currency": gateway.currency.symbol,
-            }
-        )
-
-    return payment_methods
-
 
 @inject
 async def subscription_getter(
@@ -235,10 +176,14 @@ async def payment_method_getter(
     if not duration:
         raise ValueError(f"Duration '{selected_duration}' not found in plan '{plan.name}'")
 
-    payment_methods = _build_payment_methods(gateways, i18n)
-    for payment_method in payment_methods:
-        payment_method["price"] = duration.get_price(
-            next(g.currency for g in gateways if g.type == payment_method["gateway_type"])
+    payment_methods = []
+    for gateway in gateways:
+        payment_methods.append(
+            {
+                "gateway_type": gateway.type,
+                "price": duration.get_price(gateway.currency),
+                "currency": gateway.currency.symbol,
+            }
         )
 
     key, kw = i18n_format_days(duration.days)
@@ -277,16 +222,7 @@ async def confirm_getter(
     is_free = dialog_manager.dialog_data.get("is_free", False)
     selected_payment_method = dialog_manager.dialog_data["selected_payment_method"]
     purchase_type = dialog_manager.dialog_data["purchase_type"]
-    payment_methods = _build_payment_methods(await payment_gateway_dao.get_active(), i18n)
-    selected_method = next(
-        (payment_method for payment_method in payment_methods if payment_method["id"] == selected_payment_method),
-        None,
-    )
-
-    if not selected_method:
-        raise ValueError(f"Selected payment method '{selected_payment_method}' not found")
-
-    payment_gateway = await payment_gateway_dao.get_by_type(selected_method["gateway_type"])
+    payment_gateway = await payment_gateway_dao.get_by_type(selected_payment_method)
     duration = plan.get_duration(selected_duration)
 
     if not duration:
@@ -310,13 +246,13 @@ async def confirm_getter(
         "devices": i18n_format_device_limit(plan.device_limit),
         "traffic": i18n_format_traffic_limit(plan.traffic_limit),
         "period": i18n.get(key, **kw),
-        "payment_method": selected_method["label"],
+        "payment_method": selected_payment_method,
         "final_amount": pricing.final_amount,
         "discount_percent": pricing.discount_percent,
         "original_amount": pricing.original_amount,
         "currency": payment_gateway.currency.symbol,
         "url": result_url,
-        "only_single_gateway": len(payment_methods) == 1,
+        "only_single_gateway": len(gateways) == 1,
         "only_single_duration": only_single_duration,
         "is_free": is_free,
     }

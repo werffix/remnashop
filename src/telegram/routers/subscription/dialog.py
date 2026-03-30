@@ -6,7 +6,7 @@ from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
 from src.core.constants import PAYMENT_PREFIX
-from src.core.enums import BannerName, PurchaseType
+from src.core.enums import BannerName, PaymentGatewayType, PurchaseType
 from src.telegram.keyboards import back_main_menu_button, connect_buttons
 from src.telegram.states import Subscription
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
@@ -154,14 +154,14 @@ payment_method = Window(
         Select(
             text=I18nFormat(
                 "btn-subscription.payment-method",
-                payment_method=F["item"]["label"],
+                gateway_type=F["item"]["gateway_type"],
                 price=F["item"]["price"],
                 currency=F["item"]["currency"],
             ),
             id=f"{PAYMENT_PREFIX}select_payment_method",
-            item_id_getter=lambda item: item["id"],
+            item_id_getter=lambda item: item["gateway_type"],
             items="payment_methods",
-            type_factory=str,
+            type_factory=PaymentGatewayType,
             on_click=on_payment_method_select,
         ),
     ),

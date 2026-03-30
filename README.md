@@ -26,13 +26,19 @@
 Инструкция обновы
 
 cd
+
  git clone https://github.com/werffix/remnashop
 
+
   cd remnashop
+
   
  docker build -t ghcr.io/werffix/remnashop:latest .
+ 
  echo токен из гит | docker login ghcr.io -u werffix --password-stdin
+ 
  docker push ghcr.io/werffix/remnashop:latest
+
 
  cd /opt/remnashop && docker compose pull && docker compose down && RESET_ASSETS=true docker compose up -d && docker compose logs -f
 

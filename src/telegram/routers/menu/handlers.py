@@ -71,17 +71,19 @@ async def on_get_trial(
     widget: Button,
     dialog_manager: DialogManager,
     notifier: FromDishka[Notifier],
+    settings_dao: FromDishka[SettingsDao],
     get_available_trial: FromDishka[GetAvailableTrial],
     activate_trial_subscription: FromDishka[ActivateTrialSubscription],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     plan = await get_available_trial.system(user)
+    settings = await settings_dao.get()
 
     if not plan:
         await notifier.notify_user(user=user, i18n_key="ntf-common.trial-unavailable")
         raise ValueError("Trial plan not exist")
 
-    trial = PlanSnapshotDto.from_plan(plan, plan.durations[0].days)
+    trial = PlanSnapshotDto.from_plan(plan, settings.access.trial_days)
     await activate_trial_subscription.system(ActivateTrialSubscriptionDto(user, trial))
 
 

@@ -1,4 +1,5 @@
 from typing import Any
+from urllib.parse import quote
 
 from aiogram_dialog import DialogManager
 from dishka import FromDishka
@@ -20,15 +21,12 @@ from src.core.utils.i18n_helpers import (
 from src.core.utils.time import get_traffic_reset_delta
 
 
-@inject
-async def menu_getter(
-    dialog_manager: DialogManager,
+async def _build_menu_data(
     config: AppConfig,
     user: UserDto,
-    bot_service: FromDishka[BotService],
-    i18n: FromDishka[TranslatorRunner],
-    get_menu_data: FromDishka[GetMenuData],
-    **kwargs: Any,
+    bot_service: BotService,
+    i18n: TranslatorRunner,
+    get_menu_data: GetMenuData,
 ) -> dict[str, Any]:
     try:
         menu_data = await get_menu_data(user)
@@ -99,6 +97,32 @@ async def menu_getter(
 
     except Exception as e:
         raise MenuRenderError(str(e)) from e
+
+
+@inject
+async def menu_getter(
+    dialog_manager: DialogManager,
+    config: AppConfig,
+    user: UserDto,
+    bot_service: FromDishka[BotService],
+    i18n: FromDishka[TranslatorRunner],
+    get_menu_data: FromDishka[GetMenuData],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    return await _build_menu_data(config, user, bot_service, i18n, get_menu_data)
+
+
+@inject
+async def profile_getter(
+    dialog_manager: DialogManager,
+    config: AppConfig,
+    user: UserDto,
+    bot_service: FromDishka[BotService],
+    i18n: FromDishka[TranslatorRunner],
+    get_menu_data: FromDishka[GetMenuData],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    return await _build_menu_data(config, user, bot_service, i18n, get_menu_data)
 
 
 def get_platform_icon(platform: str | None) -> str:
@@ -181,6 +205,8 @@ async def invite_getter(
     payments = await referral_dao.get_referrals_with_payment_count(user.telegram_id)
     referral_url = await bot_service.get_referral_url(user.referral_code)
     support_url = bot_service.get_support_url(text=i18n.get("message.withdraw-points"))
+    share_text = quote("Переходи по моей ссылке и получи 7 дней VPN")
+    share_url = f"https://t.me/share/url?url={quote(referral_url, safe='')}&text={share_text}"
 
     return {
         "reward_type": settings.referral.reward.type,
@@ -190,6 +216,7 @@ async def invite_getter(
         "is_points_reward": settings.referral.reward.is_points,
         "has_points": True if user.points > 0 else False,
         "referral_url": referral_url,
+        "share_url": share_url,
         "withdraw": support_url,
     }
 

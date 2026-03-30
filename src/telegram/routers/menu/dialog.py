@@ -16,7 +16,7 @@ from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
 from src.application.common.policy import Permission
-from src.core.constants import INLINE_QUERY_INVITE, PAYMENT_PREFIX
+from src.core.constants import INLINE_QUERY_INVITE
 from src.core.enums import BannerName
 from src.telegram.keyboards import connect_buttons, custom_buttons
 from src.telegram.routers.dashboard.users.handlers import on_user_search
@@ -31,6 +31,7 @@ from .getters import (
     invite_about_getter,
     invite_getter,
     menu_getter,
+    profile_getter,
 )
 from .handlers import (
     on_device_delete_all_confirm,
@@ -68,15 +69,9 @@ menu = Window(
     ),
     Row(
         SwitchTo(
-            text=I18nFormat("btn-menu.devices"),
-            id="devices",
-            state=MainMenu.DEVICES,
-            when=F["has_device_limit"],
-        ),
-        Start(
-            text=I18nFormat("btn-menu.subscription"),
-            id=f"{PAYMENT_PREFIX}subscription",
-            state=Subscription.MAIN,
+            text=I18nFormat("btn-menu.profile"),
+            id="profile",
+            state=MainMenu.PROFILE,
         ),
     ),
     Row(
@@ -101,6 +96,13 @@ menu = Window(
             url=Format("{support_url}"),
         ),
     ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-menu.about"),
+            id="about",
+            state=MainMenu.ABOUT,
+        ),
+    ),
     *custom_buttons,
     Row(
         Start(
@@ -115,6 +117,49 @@ menu = Window(
     IgnoreUpdate(),
     state=MainMenu.MAIN,
     getter=menu_getter,
+)
+
+profile = Window(
+    Banner(BannerName.MENU),
+    I18nFormat("msg-profile"),
+    Row(
+        *connect_buttons,
+        Button(
+            text=I18nFormat("btn-menu.connect-not-available"),
+            id="profile_not_available",
+            on_click=show_reason,
+            when=~F["connectable"] & F["has_subscription"],
+        ),
+        Start(
+            text=I18nFormat("btn-menu.buy-subscription"),
+            id="buy_subscription",
+            state=Subscription.MAIN,
+            when=~F["has_subscription"],
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-menu.devices"),
+            id="profile_devices",
+            state=MainMenu.DEVICES,
+            when=F["has_device_limit"],
+        ),
+        Start(
+            text=I18nFormat("btn-menu.subscription-manage"),
+            id="profile_subscription",
+            state=Subscription.MAIN,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="profile_back",
+            state=MainMenu.MAIN,
+        ),
+    ),
+    IgnoreUpdate(),
+    state=MainMenu.PROFILE,
+    getter=profile_getter,
 )
 
 devices = Window(
@@ -233,12 +278,9 @@ invite = Window(
             id="qr",
             on_click=on_show_qr,
         ),
-        SwitchInlineQueryChosenChatButton(
+        Url(
             text=I18nFormat("btn-invite.send"),
-            query=Format(INLINE_QUERY_INVITE),
-            allow_user_chats=True,
-            allow_group_chats=True,
-            allow_channel_chats=True,
+            url=Format("{share_url}"),
             id="send",
         ),
     ),
@@ -267,6 +309,41 @@ invite = Window(
     IgnoreUpdate(),
     state=MainMenu.INVITE,
     getter=invite_getter,
+)
+
+about = Window(
+    Banner(BannerName.MENU),
+    I18nFormat("msg-menu-about-project"),
+    Row(
+        Url(
+            text=Format("Наш канал"),
+            id="channel",
+            url=Format("https://t.me/q1_vpn"),
+        ),
+    ),
+    Row(
+        Url(
+            text=Format("Условия использования"),
+            id="rules",
+            url=Format("https://telegra.ph/Polzovatelskoe-soglashenie-08-15-10"),
+        ),
+    ),
+    Row(
+        Url(
+            text=Format("Политика конфиденциальности"),
+            id="privacy",
+            url=Format("https://telegra.ph/Politika-konfidencialnosti-08-15-17"),
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="about_back",
+            state=MainMenu.MAIN,
+        ),
+    ),
+    IgnoreUpdate(),
+    state=MainMenu.ABOUT,
 )
 
 invite_about = Window(
@@ -308,10 +385,12 @@ device_confirm_reissue = Window(
 
 router = Dialog(
     menu,
+    profile,
     devices,
     device_confirm_delete,
     device_confirm_delete_all,
     device_confirm_reissue,
     invite,
     invite_about,
+    about,
 )

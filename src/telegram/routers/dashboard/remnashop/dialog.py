@@ -1,4 +1,5 @@
 from aiogram_dialog import Dialog, StartMode, Window
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, ListGroup, Row, Start, SwitchTo
 from aiogram_dialog.widgets.text import Format
 from magic_filter import F
@@ -19,8 +20,8 @@ from src.telegram.states import (
 from src.telegram.utils import require_permission
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
 
-from .getters import admins_getter, remnashop_getter
-from .handlers import on_logs_request, on_role_revoke, on_user_select
+from .getters import admins_getter, remnashop_getter, trial_period_getter
+from .handlers import on_logs_request, on_role_revoke, on_trial_days_input, on_user_select
 
 remnashop = Window(
     Banner(BannerName.DASHBOARD),
@@ -69,6 +70,14 @@ remnashop = Window(
             id="notifications",
             state=RemnashopNotifications.MAIN,
             when=require_permission(Permission.VIEW_NOTIFICATIONS),
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-remnashop.trial-period"),
+            id="trial_period",
+            state=DashboardRemnashop.TRIAL_PERIOD,
+            when=require_permission(Permission.SETTINGS_ACCESS),
         ),
     ),
     Row(
@@ -133,7 +142,24 @@ admins = Window(
     getter=admins_getter,
 )
 
+trial_period = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-remnashop-trial-period"),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=DashboardRemnashop.MAIN,
+        ),
+    ),
+    MessageInput(func=on_trial_days_input),
+    IgnoreUpdate(),
+    state=DashboardRemnashop.TRIAL_PERIOD,
+    getter=trial_period_getter,
+)
+
 router = Dialog(
     remnashop,
     admins,
+    trial_period,
 )

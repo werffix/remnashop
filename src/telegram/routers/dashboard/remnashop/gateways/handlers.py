@@ -172,3 +172,30 @@ async def on_gateway_move(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     gateway_id = int(dialog_manager.item_id)  # type: ignore[attr-defined]
     await move_payment_gateway_up(user, gateway_id)
+
+
+@inject
+async def on_platega_method_toggle(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    payment_gateway_dao: FromDishka[PaymentGatewayDao],
+    update_payment_gateway_settings: FromDishka[UpdatePaymentGatewaySettings],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    gateway_id = dialog_manager.dialog_data["gateway_id"]
+    field_name = str(callback.data).split(":")[-1].removeprefix("platega_toggle_")
+    gateway = await payment_gateway_dao.get_by_id(gateway_id)
+
+    if not gateway or not gateway.settings:
+        raise ValueError(f"Gateway '{gateway_id}' not found")
+
+    current_value = getattr(gateway.settings, field_name)
+    await update_payment_gateway_settings(
+        user,
+        UpdatePaymentGatewaySettingsDto(
+            gateway_id=gateway_id,
+            field_name=field_name,
+            value=str(not current_value).lower(),
+        ),
+    )

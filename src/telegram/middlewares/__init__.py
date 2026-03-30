@@ -19,8 +19,8 @@ def setup_middlewares(router: Router) -> None:
         AccessMiddleware(),
         ErrorMiddleware(),
         UserMiddleware(),
-        RulesMiddleware(),
         ChannelMiddleware(),
+        RulesMiddleware(),
         ThrottlingMiddleware(),
     ]
 

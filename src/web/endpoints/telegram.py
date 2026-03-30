@@ -5,6 +5,12 @@ from typing import Annotated, Any
 from aiogram import Bot, Dispatcher
 from aiogram.methods import TelegramMethod
 from aiogram.types import Update
+from aiogram_dialog.api.exceptions import (
+    InvalidStackIdError,
+    OutdatedIntent,
+    UnknownIntent,
+    UnknownState,
+)
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import Body, FastAPI, Header, HTTPException, Response, status
 from loguru import logger
@@ -47,6 +53,20 @@ class TelegramWebhookEndpoint:
             result = await self.dispatcher.feed_update(bot, update)
             if isinstance(result, TelegramMethod):
                 await result.as_(bot)
+        except (InvalidStackIdError, OutdatedIntent, UnknownIntent, UnknownState) as e:
+            logger.debug(f"Skipped outdated dialog update '{update.update_id}': {e}")
+
+            if update.callback_query:
+                try:
+                    await bot.answer_callback_query(
+                        callback_query_id=update.callback_query.id,
+                        text="Меню устарело. Откройте /start",
+                    )
+                except Exception as callback_error:
+                    logger.debug(
+                        f"Failed to answer outdated callback '{update.update_id}': "
+                        f"'{callback_error}'"
+                    )
         except Exception as e:
             logger.exception(f"Failed to process update '{update.update_id}' due to error '{e}'")
 

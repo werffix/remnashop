@@ -268,23 +268,11 @@ btn-menu-editor =
     
 btn-gateway =
     .title = { gateway-type }
-    .setting = { gateway-field }
+    .setting = { $field }
     .webhook-copy = 📋 Скопировать вебхук
     .test = 🐞 Тест
     .default-currency = 💸 Валюта по умолчанию
     .placement = 🔢 Изменить позиционирование
-    .platega-sbp = { $enabled ->
-    [1] 🟢
-    *[0] 🔴
-    } СБП
-    .platega-card = { $enabled ->
-    [1] 🟢
-    *[0] 🔴
-    } Карточный эквайринг
-    .platega-crypto = { $enabled ->
-    [1] 🟢
-    *[0] 🔴
-    } Криптовалюта
 
     .active = { $is_active ->
     [1] 🟢 Включено

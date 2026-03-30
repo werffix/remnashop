@@ -381,24 +381,6 @@ reward-strategy = { $reward_strategy_type ->
     *[OTHER] { $reward_strategy_type }
     }
 
-gateway-field = { $field ->
-    [MERCHANT_ID] Merchant ID
-    [API_KEY] API Key
-    [SHOP_ID] Shop ID
-    [SECRET_KEY] Secret Key
-    [WALLET_ID] Wallet ID
-    [SECRET_WORD_2] Secret Word 2
-    [PAYMENT_SYSTEM_ID] Payment System ID
-    [CUSTOMER_EMAIL] Customer Email
-    [CUSTOMER_IP] Customer IP
-    [CUSTOMER] Customer
-    [VAT_CODE] VAT Code
-    [MERCHANT_LOGIN] Merchant Login
-    [PASSWORD1] Password 1
-    [PASSWORD2] Password 2
-    *[OTHER] { $field }
-}
-
 button-type = { $button_type ->
     [URL] Открыть ссылку
     [COPY] Скопировать текст

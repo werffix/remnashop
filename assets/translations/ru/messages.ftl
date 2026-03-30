@@ -826,7 +826,7 @@ msg-gateways-placement = <b>🔢 Изменить позиционировани
 msg-gateways-field =
     <b>🌐 Конфигурация { gateway-type }</b>
 
-    Введите новое значение для { gateway-field }.
+    Введите новое значение для { $field }.
 
 
 # Referral

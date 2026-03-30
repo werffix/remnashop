@@ -129,6 +129,7 @@ class ReferralLevel(IntEnum):
 class ReferralAccrualStrategy(UpperStrEnum):
     ON_FIRST_PAYMENT = auto()
     ON_EACH_PAYMENT = auto()
+    ON_TRIAL_ACTIVATION = auto()
 
 
 class ReferralRewardStrategy(UpperStrEnum):

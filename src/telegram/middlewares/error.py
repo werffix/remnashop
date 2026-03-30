@@ -38,6 +38,18 @@ class ErrorMiddleware(EventTypedMiddleware):
     ) -> Any:
         event = cast(AiogramErrorEvent, event)
         aiogram_user: Optional[AiogramUser] = self._get_aiogram_user(data)
+
+        if isinstance(
+            event.exception,
+            (
+                InvalidStackIdError,
+                OutdatedIntent,
+                UnknownIntent,
+                UnknownState,
+            ),
+        ):
+            return await handler(event, data)
+
         config: AppConfig = data[CONFIG_KEY]
         container: AsyncContainer = data[CONTAINER_KEY]
 
@@ -73,17 +85,6 @@ class ErrorMiddleware(EventTypedMiddleware):
                         reply_markup=get_contact_support_keyboard(bot_service.get_support_url()),
                     ),
                 )
-
-        if isinstance(
-            event.exception,
-            (
-                InvalidStackIdError,
-                OutdatedIntent,
-                UnknownIntent,
-                UnknownState,
-            ),
-        ):
-            return await handler(event, data)
 
         error_event = ErrorEvent(
             **config.build.data,

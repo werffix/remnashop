@@ -40,7 +40,7 @@ cd
  docker push ghcr.io/werffix/remnashop:latest
 
 
- cd /opt/remnashop && docker compose pull && docker compose down && RESET_ASSETS=true docker compose up -d && docker compose logs -f
+ cd /opt/remnashop && docker-compose pull && docker-compose down && RESET_ASSETS=true docker-compose up -d && docker-compose logs -f
 
 
     </a>

@@ -8,7 +8,7 @@ from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
 
 from src.application.common import Notifier, TranslatorRunner
-from src.application.common.dao import SubscriptionDao
+from src.application.common.dao import SettingsDao, SubscriptionDao
 from src.application.dto import MediaDescriptorDto, MessagePayloadDto, PlanSnapshotDto, UserDto
 from src.application.services import BotService
 from src.application.use_cases.referral.queries.code import GenerateReferralQr

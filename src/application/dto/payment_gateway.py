@@ -130,22 +130,6 @@ class PlategaGatewaySettingsDto(GatewaySettingsDto):
     merchant_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
     payment_method: Optional[int] = None
-    sbp_enabled: bool = True
-    card_enabled: bool = True
-    crypto_enabled: bool = True
-
-    def __post_init__(self) -> None:
-        super().__post_init__()
-
-        # Backward compatibility for previously saved Platega settings.
-        if self.payment_method is not None:
-            self.sbp_enabled = self.payment_method == 2
-            self.card_enabled = self.payment_method == 11
-            self.crypto_enabled = self.payment_method == 13
-
-    @property
-    def hidden_fields(self) -> set[str]:
-        return {"payment_method", "sbp_enabled", "card_enabled", "crypto_enabled"}
 
 
 @dataclass(kw_only=True)

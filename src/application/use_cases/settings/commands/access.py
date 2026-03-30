@@ -79,26 +79,3 @@ class ToggleRegistration(Interactor[None, None]):
             await self.uow.commit()
 
         logger.info(f"{actor.log} Toggled registration availability to '{new_state}'")
-
-
-class UpdateTrialDays(Interactor[int, None]):
-    required_permission = Permission.SETTINGS_ACCESS
-
-    def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
-        self.uow = uow
-        self.settings_dao = settings_dao
-
-    async def _execute(self, actor: UserDto, trial_days: int) -> None:
-        if trial_days < 1:
-            raise ValueError("Trial days must be greater than 0")
-
-        async with self.uow:
-            settings = await self.settings_dao.get()
-            old_trial_days = settings.access.trial_days
-            settings.access.trial_days = trial_days
-            await self.settings_dao.update(settings)
-            await self.uow.commit()
-
-        logger.info(
-            f"{actor.log} Updated trial days from '{old_trial_days}' to '{trial_days}'"
-        )

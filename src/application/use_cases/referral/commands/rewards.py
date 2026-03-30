@@ -1,6 +1,3 @@
-from decimal import Decimal
-from uuid import uuid4
-
 from dataclasses import dataclass
 
 from loguru import logger
@@ -8,7 +5,7 @@ from loguru import logger
 from src.application.common import EventPublisher, Interactor
 from src.application.common.dao import ReferralDao, SettingsDao, SubscriptionDao, UserDao
 from src.application.common.uow import UnitOfWork
-from src.application.dto import PlanSnapshotDto, PriceDetailsDto, ReferralRewardDto, TransactionDto, UserDto
+from src.application.dto import ReferralRewardDto, TransactionDto, UserDto
 from src.application.events import ReferralRewardFailedEvent, ReferralRewardReceivedEvent
 from src.application.use_cases.referral.queries.calculations import (
     CalculateReferralReward,
@@ -22,15 +19,7 @@ from src.application.use_cases.user.commands.profile_edit import (
     ChangeUserPoints,
     ChangeUserPointsDto,
 )
-from src.core.enums import (
-    Currency,
-    PaymentGatewayType,
-    PurchaseType,
-    ReferralAccrualStrategy,
-    ReferralLevel,
-    ReferralRewardType,
-    TransactionStatus,
-)
+from src.core.enums import PurchaseType, ReferralAccrualStrategy, ReferralLevel, ReferralRewardType
 
 
 @dataclass(frozen=True)
@@ -245,36 +234,3 @@ class AssignReferralRewards(Interactor[AssignReferralRewardsDto, None]):
                 f"Issued '{reward_type}' reward '{reward_amount}' for referrer "
                 f"'{referrer.telegram_id}' (level '{level.name}')"
             )
-
-
-@dataclass(frozen=True)
-class AssignTrialReferralRewardsDto:
-    user: UserDto
-    plan_snapshot: PlanSnapshotDto
-
-
-class AssignTrialReferralRewards(Interactor[AssignTrialReferralRewardsDto, None]):
-    required_permission = None
-
-    def __init__(self, assign_referral_rewards: AssignReferralRewards) -> None:
-        self.assign_referral_rewards = assign_referral_rewards
-
-    async def _execute(self, actor: UserDto, data: AssignTrialReferralRewardsDto) -> None:
-        synthetic_transaction = TransactionDto(
-            payment_id=uuid4(),
-            user_telegram_id=data.user.telegram_id,
-            status=TransactionStatus.COMPLETED,
-            purchase_type=PurchaseType.NEW,
-            gateway_type=PaymentGatewayType.TELEGRAM_STARS,
-            pricing=PriceDetailsDto(
-                original_amount=Decimal(0),
-                discount_percent=0,
-                final_amount=Decimal(0),
-            ),
-            currency=Currency.USD,
-            plan_snapshot=data.plan_snapshot,
-        )
-
-        await self.assign_referral_rewards.system(
-            AssignReferralRewardsDto(user=data.user, transaction=synthetic_transaction)
-        )

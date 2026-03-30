@@ -1,3 +1,4 @@
+from decimal import Decimal
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Optional
@@ -5,15 +6,31 @@ from typing import Optional
 from loguru import logger
 
 from src.application.common import EventPublisher, Interactor, Redirect, Remnawave, TranslatorRunner
-from src.application.common.dao import SubscriptionDao, TransactionDao, UserDao
+from src.application.common.dao import ReferralDao, SettingsDao, SubscriptionDao, TransactionDao, UserDao
 from src.application.common.uow import UnitOfWork
-from src.application.dto import PlanSnapshotDto, SubscriptionDto, TransactionDto, UserDto
-from src.application.events import TrialActivatedEvent
-from src.application.use_cases.referral.commands.rewards import (
-    AssignTrialReferralRewards,
-    AssignTrialReferralRewardsDto,
+from src.application.dto import PlanSnapshotDto, ReferralRewardDto, SubscriptionDto, TransactionDto, UserDto
+from src.application.events import (
+    ReferralRewardFailedEvent,
+    ReferralRewardReceivedEvent,
+    TrialActivatedEvent,
 )
-from src.core.enums import PurchaseType, SubscriptionStatus, TransactionStatus
+from src.application.use_cases.subscription.commands.management import (
+    AddSubscriptionDuration,
+    AddSubscriptionDurationDto,
+)
+from src.application.use_cases.user.commands.profile_edit import (
+    ChangeUserPoints,
+    ChangeUserPointsDto,
+)
+from src.core.enums import (
+    PurchaseType,
+    ReferralAccrualStrategy,
+    ReferralLevel,
+    ReferralRewardStrategy,
+    ReferralRewardType,
+    SubscriptionStatus,
+    TransactionStatus,
+)
 from src.core.exceptions import PurchaseError, TrialError
 from src.core.types import RemnaUserDto
 from src.core.utils.converters import days_to_datetime
@@ -38,21 +55,27 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
         self,
         uow: UnitOfWork,
         user_dao: UserDao,
+        settings_dao: SettingsDao,
+        referral_dao: ReferralDao,
         subscription_dao: SubscriptionDao,
         remnawave: Remnawave,
         event_publisher: EventPublisher,
         redirect: Redirect,
         i18n: TranslatorRunner,
-        assign_trial_referral_rewards: AssignTrialReferralRewards,
+        change_user_points: ChangeUserPoints,
+        add_subscription_duration: AddSubscriptionDuration,
     ) -> None:
         self.uow = uow
         self.user_dao = user_dao
+        self.settings_dao = settings_dao
+        self.referral_dao = referral_dao
         self.subscription_dao = subscription_dao
         self.remnawave = remnawave
         self.event_publisher = event_publisher
         self.redirect = redirect
         self.i18n = i18n
-        self.assign_trial_referral_rewards = assign_trial_referral_rewards
+        self.change_user_points = change_user_points
+        self.add_subscription_duration = add_subscription_duration
 
     async def _execute(self, actor: UserDto, data: ActivateTrialSubscriptionDto) -> None:
         user = data.user
@@ -101,9 +124,7 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
                 plan_duration=i18n_format_days(plan.duration),
             )
             await self.event_publisher.publish(event)
-            await self.assign_trial_referral_rewards.system(
-                AssignTrialReferralRewardsDto(user=user, plan_snapshot=plan)
-            )
+            await self._assign_trial_referral_rewards(user, plan)
             await self.redirect.to_success_trial(user.telegram_id)
             logger.info(
                 f"{actor.log} Trial subscription completed "
@@ -114,6 +135,120 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
             logger.exception(f"{actor.log} Failed to give trial for user '{user.telegram_id}'")
             await self.redirect.to_failed_payment(user.telegram_id)
             raise TrialError(e)
+
+    async def _assign_trial_referral_rewards(
+        self,
+        user: UserDto,
+        plan: PlanSnapshotDto,
+    ) -> None:
+        settings = await self.settings_dao.get()
+
+        if not settings.referral.enable:
+            return
+
+        if settings.referral.accrual_strategy != ReferralAccrualStrategy.ON_TRIAL_ACTIVATION:
+            return
+
+        referral, parent = await self.referral_dao.get_referral_chain(user.telegram_id)
+        if not referral:
+            return
+
+        reward_chain = {ReferralLevel.FIRST: referral.referrer}
+        if parent:
+            reward_chain[ReferralLevel.SECOND] = parent.referrer
+
+        for level, referrer in reward_chain.items():
+            if level > settings.referral.level:
+                continue
+
+            config_value = settings.referral.reward.config.get(level)
+            if config_value is None:
+                continue
+
+            reward_amount = self._calculate_trial_reward_amount(
+                duration=plan.duration,
+                config_value=config_value,
+                reward_strategy=settings.referral.reward.strategy,
+            )
+            if reward_amount <= 0:
+                continue
+
+            async with self.uow:
+                reward = await self.referral_dao.create_reward(
+                    reward=ReferralRewardDto(
+                        user_telegram_id=referrer.telegram_id,
+                        type=settings.referral.reward.type,
+                        amount=reward_amount,
+                        is_issued=False,
+                    ),
+                    referral_id=referral.id,  # type: ignore[arg-type]
+                )
+                await self.uow.commit()
+
+            await self._apply_referral_reward(
+                reward=reward,
+                referred_name=user.name,
+                reward_type=settings.referral.reward.type,
+            )
+
+    def _calculate_trial_reward_amount(
+        self,
+        duration: int,
+        config_value: int,
+        reward_strategy: ReferralRewardStrategy,
+    ) -> int:
+        if reward_strategy == ReferralRewardStrategy.AMOUNT:
+            return config_value
+
+        percentage = Decimal(config_value) / Decimal(100)
+        return max(1, int(Decimal(duration) * percentage))
+
+    async def _apply_referral_reward(
+        self,
+        reward: ReferralRewardDto,
+        referred_name: str,
+        reward_type: ReferralRewardType,
+    ) -> None:
+        referrer = await self.user_dao.get_by_telegram_id(reward.user_telegram_id)
+        if not referrer:
+            return
+
+        if reward_type == ReferralRewardType.POINTS:
+            await self.change_user_points.system(
+                ChangeUserPointsDto(
+                    telegram_id=referrer.telegram_id,
+                    amount=reward.amount,
+                )
+            )
+        else:
+            subscription = await self.subscription_dao.get_current(referrer.telegram_id)
+            if not subscription or subscription.is_trial:
+                await self.event_publisher.publish(
+                    ReferralRewardFailedEvent(
+                        user=referrer,
+                        name=referred_name,
+                        value=reward.amount,
+                        reward_type=reward_type,
+                    )
+                )
+                return
+
+            await self.add_subscription_duration.system(
+                AddSubscriptionDurationDto(
+                    telegram_id=referrer.telegram_id,
+                    days=reward.amount,
+                )
+            )
+
+        await self.event_publisher.publish(
+            ReferralRewardReceivedEvent(
+                user=referrer,
+                name=referred_name,
+                value=reward.amount,
+                reward_type=reward_type,
+            )
+        )
+        await self.referral_dao.mark_reward_as_issued(reward.id)  # type: ignore[arg-type]
 
 
 @dataclass(frozen=True)

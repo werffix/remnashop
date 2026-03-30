@@ -245,7 +245,6 @@ btn-remnashop =
     .referral = 👥 Реф. система
     .advertising = 🎯 Реклама
     .plans = 📦 Планы
-    .trial-period = 🎁 Пробный период
     .notifications = 🔔 Уведомления
     .logs = 📄 Логи
     .menu-editor = 🎛 Доп. кнопки

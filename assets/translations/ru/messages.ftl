@@ -769,17 +769,6 @@ msg-remnashop-main = <b>🛍 RemnaShop { $version ->
 *[HAS] { $version }
 }</b>
 
-msg-remnashop-trial-period =
-    <b>🎁 Пробный период</b>
-
-    Сейчас пробная подписка выдается на <b>{ $trial_days }</b> { $trial_days ->
-    [one] день
-    [few] дня
-    *[other] дней
-    }.
-
-    Введите новое количество дней.
-
 msg-admins-main = <b>👮‍♂️ Администраторы</b>
 
 

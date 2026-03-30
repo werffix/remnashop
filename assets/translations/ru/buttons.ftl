@@ -37,14 +37,18 @@ btn-remnashop-info =
 btn-requirement =
     .rules-accept = ✅ Принять правила
     .channel-join = ❤️ Перейти в канал
-    .channel-confirm = ✅ Подтвердить
+    .channel-confirm = ✅ Я подписался
 
 btn-menu =
     .trial = 🎁 ПОПРОБОВАТЬ БЕСПЛАТНО
     .connect = 🚀 Подключиться
+    .profile = 👤 Личный кабинет
     .devices = 📱 Мои устройства
     .subscription = 💳 Подписка
+    .subscription-manage = 💳 Управление подпиской
+    .buy-subscription = 💳 Купить подписку
     .invite = 👥 Пригласить
+    .about = 🚀 О проекте
     .support = 🆘 Поддержка
     .dashboard = 🛠 Панель управления
 
@@ -241,6 +245,7 @@ btn-remnashop =
     .referral = 👥 Реф. система
     .advertising = 🎯 Реклама
     .plans = 📦 Планы
+    .trial-period = 🎁 Пробный период
     .notifications = 🔔 Уведомления
     .logs = 📄 Логи
     .menu-editor = 🎛 Доп. кнопки
@@ -264,11 +269,23 @@ btn-menu-editor =
     
 btn-gateway =
     .title = { gateway-type }
-    .setting = { $field }
+    .setting = { gateway-field }
     .webhook-copy = 📋 Скопировать вебхук
     .test = 🐞 Тест
     .default-currency = 💸 Валюта по умолчанию
     .placement = 🔢 Изменить позиционирование
+    .platega-sbp = { $enabled ->
+    [1] 🟢
+    *[0] 🔴
+    } СБП
+    .platega-card = { $enabled ->
+    [1] 🟢
+    *[0] 🔴
+    } Карточный эквайринг
+    .platega-crypto = { $enabled ->
+    [1] 🟢
+    *[0] 🔴
+    } Криптовалюта
 
     .active = { $is_active ->
     [1] 🟢 Включено
@@ -308,6 +325,7 @@ btn-referral =
     .accrual-strategy-choice = { $type -> 
     [ON_FIRST_PAYMENT] 💳 Первый платеж
     [ON_EACH_PAYMENT] 💸 Каждый платеж
+    [ON_TRIAL_ACTIVATION] 🎁 При оформлении пробного периода
     *[OTHER] { $type }
     }
 
@@ -447,7 +465,7 @@ btn-subscription =
     .renew = 🔄 Продлить
     .change = 🔃 Изменить
     .promocode = 🎟 Активировать промокод
-    .payment-method = { gateway-type } | { $price } { $currency }
+    .payment-method = { $payment_method } | { $price } { $currency }
     .pay = 💳 Оплатить
     .get = 🎁 Получить бесплатно
     .back-plans = ⬅️ Назад к выбору плана

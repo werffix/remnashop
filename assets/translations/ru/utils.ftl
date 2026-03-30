@@ -14,11 +14,9 @@ inline-invite =
     .title = Пригласить друга
     .description = Нажмите, чтобы отправить пригласительную ссылку!
     .message =
-        🚀 Привет! Хочешь стабильный и быстрый VPN?
-        
-        { $bot_name } - поможет тебе с этим!
+        Переходи по моей ссылке и получи 7 дней VPN
 
-        ↘️ ЖМИ КНОПКУ И ПОПРОБУЙ БЕСПЛАТНО!
+        { $bot_name }
     .start = 🚀 Присоединиться
 
 message =
@@ -373,6 +371,7 @@ reward-type = { $reward_type ->
 accrual-strategy = { $accrual_strategy_type -> 
     [ON_FIRST_PAYMENT] Первый платеж
     [ON_EACH_PAYMENT] Каждый платеж
+    [ON_TRIAL_ACTIVATION] При оформлении пробного периода
     *[OTHER] { $accrual_strategy_type }
     }
 
@@ -381,6 +380,24 @@ reward-strategy = { $reward_strategy_type ->
     [PERCENT] Процентная
     *[OTHER] { $reward_strategy_type }
     }
+
+gateway-field = { $field ->
+    [MERCHANT_ID] Merchant ID
+    [API_KEY] API Key
+    [SHOP_ID] Shop ID
+    [SECRET_KEY] Secret Key
+    [WALLET_ID] Wallet ID
+    [SECRET_WORD_2] Secret Word 2
+    [PAYMENT_SYSTEM_ID] Payment System ID
+    [CUSTOMER_EMAIL] Customer Email
+    [CUSTOMER_IP] Customer IP
+    [CUSTOMER] Customer
+    [VAT_CODE] VAT Code
+    [MERCHANT_LOGIN] Merchant Login
+    [PASSWORD1] Password 1
+    [PASSWORD2] Password 2
+    *[OTHER] { $field }
+}
 
 button-type = { $button_type ->
     [URL] Открыть ссылку

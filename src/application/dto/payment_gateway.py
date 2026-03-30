@@ -37,6 +37,10 @@ class PaymentGatewayDto(BaseDto, TrackableMixin):
 @dataclass(kw_only=True)
 class GatewaySettingsDto(TrackableMixin):
     @property
+    def hidden_fields(self) -> set[str]:
+        return set()
+
+    @property
     def is_configured(self) -> bool:
         for f in fields(self):
             if f.name in {"created_at", "updated_at", "type"}:
@@ -50,7 +54,9 @@ class GatewaySettingsDto(TrackableMixin):
         return [
             {"field": f.name, "value": getattr(self, f.name)}
             for f in fields(self)
-            if f.name not in {"type", "created_at", "updated_at"} and not f.name.startswith("_")
+            if f.name not in {"type", "created_at", "updated_at"}
+            and f.name not in self.hidden_fields
+            and not f.name.startswith("_")
         ]
 
 
@@ -123,7 +129,13 @@ class PlategaGatewaySettingsDto(GatewaySettingsDto):
     type: Literal[PaymentGatewayType.PLATEGA] = PaymentGatewayType.PLATEGA
     merchant_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
-    payment_method: Optional[int] = None
+    sbp_enabled: bool = True
+    card_enabled: bool = True
+    crypto_enabled: bool = True
+
+    @property
+    def hidden_fields(self) -> set[str]:
+        return {"sbp_enabled", "card_enabled", "crypto_enabled"}
 
 
 @dataclass(kw_only=True)

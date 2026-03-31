@@ -17,7 +17,7 @@ from magic_filter import F
 
 from src.application.common.policy import Permission
 from src.core.constants import INLINE_QUERY_INVITE
-from src.core.enums import BannerName
+from src.core.enums import BannerName, SubscriptionStatus
 from src.telegram.keyboards import connect_buttons, custom_buttons
 from src.telegram.routers.dashboard.users.handlers import on_user_search
 from src.telegram.states import Dashboard, MainMenu, Subscription
@@ -50,13 +50,23 @@ menu = Window(
     I18nFormat("msg-main-menu"),
     Row(
         *connect_buttons,
+        when=F["connectable"],
+    ),
+    Row(
+        Start(
+            text=I18nFormat("btn-menu.buy-subscription"),
+            id="buy_subscription_expired",
+            state=Subscription.MAIN,
+            when=F["has_subscription"] & (F["status"] == SubscriptionStatus.EXPIRED),
+        ),
         Button(
             text=I18nFormat("btn-menu.connect-not-available"),
             id="not_available",
             on_click=show_reason,
-            when=~F["connectable"],
+            when=F["has_subscription"]
+            & ~F["connectable"]
+            & (F["status"] != SubscriptionStatus.EXPIRED),
         ),
-        when=F["has_subscription"],
     ),
     Row(
         Button(
@@ -73,8 +83,6 @@ menu = Window(
             id="profile",
             state=MainMenu.PROFILE,
         ),
-    ),
-    Row(
         Button(
             text=I18nFormat("btn-menu.invite"),
             id="invite",
@@ -97,6 +105,11 @@ menu = Window(
         ),
     ),
     Row(
+        Url(
+            text=I18nFormat("btn-menu.support"),
+            id="support_secondary",
+            url=Format("{support_url}"),
+        ),
         SwitchTo(
             text=I18nFormat("btn-menu.about"),
             id="about",
@@ -124,17 +137,22 @@ profile = Window(
     I18nFormat("msg-profile"),
     Row(
         *connect_buttons,
+        when=F["connectable"],
+    ),
+    Row(
+        Start(
+            text=I18nFormat("btn-menu.buy-subscription"),
+            id="profile_buy_subscription_expired",
+            state=Subscription.MAIN,
+            when=(~F["has_subscription"]) | (F["status"] == SubscriptionStatus.EXPIRED),
+        ),
         Button(
             text=I18nFormat("btn-menu.connect-not-available"),
             id="profile_not_available",
             on_click=show_reason,
-            when=~F["connectable"] & F["has_subscription"],
-        ),
-        Start(
-            text=I18nFormat("btn-menu.buy-subscription"),
-            id="buy_subscription",
-            state=Subscription.MAIN,
-            when=~F["has_subscription"],
+            when=F["has_subscription"]
+            & ~F["connectable"]
+            & (F["status"] != SubscriptionStatus.EXPIRED),
         ),
     ),
     Row(

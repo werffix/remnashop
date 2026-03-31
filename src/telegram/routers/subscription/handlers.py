@@ -18,7 +18,6 @@ from src.application.use_cases.gateways.commands.payment import (
     ProcessPayment,
     ProcessPaymentDto,
 )
-from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.constants import PAYMENT_PREFIX, USER_KEY
 from src.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
@@ -103,10 +102,8 @@ async def on_purchase_type_select(
     purchase_type: PurchaseType,
     dialog_manager: DialogManager,
     retort: FromDishka[Retort],
-    subscription_dao: FromDishka[SubscriptionDao],
     payment_gateway_dao: FromDishka[PaymentGatewayDao],
     notifier: FromDishka[Notifier],
-    match_plan: FromDishka[MatchPlan],
     get_available_plans: FromDishka[GetAvailablePlans],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
@@ -125,23 +122,6 @@ async def on_purchase_type_select(
         await notifier.notify_user(user, i18n_key="ntf-subscription.gateways-unavailable")
         return
 
-    current_subscription = await subscription_dao.get_current(user.telegram_id)
-
-    if purchase_type == PurchaseType.RENEW:
-        if current_subscription:
-            matched_plan = await match_plan.system(
-                MatchPlanDto(plan_snapshot=current_subscription.plan_snapshot, plans=plans)
-            )
-            if matched_plan:
-                dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(matched_plan)
-                dialog_manager.dialog_data["only_single_plan"] = True
-                await dialog_manager.switch_to(state=Subscription.DURATION)
-                return
-            else:
-                logger.warning(f"{user.log} Tried to renew, but no matching plan found")
-                await notifier.notify_user(user, i18n_key="ntf-subscription.renew-plan-unavailable")
-                return
-
     if len(plans) == 1:
         logger.info(f"{user.log} Auto-selected single plan '{plans[0].id}'")
         dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(plans[0])
@@ -159,11 +139,9 @@ async def on_subscription_plans(  # noqa: C901
     widget: Button,
     dialog_manager: DialogManager,
     retort: FromDishka[Retort],
-    subscription_dao: FromDishka[SubscriptionDao],
     payment_gateway_dao: FromDishka[PaymentGatewayDao],
     pricing_service: FromDishka[PricingService],
     notifier: FromDishka[Notifier],
-    match_plan: FromDishka[MatchPlan],
     get_available_plans: FromDishka[GetAvailablePlans],
     create_payment: FromDishka[CreatePayment],
 ) -> None:
@@ -190,23 +168,6 @@ async def on_subscription_plans(  # noqa: C901
         logger.warning(f"{user.log} No active payment gateways")
         await notifier.notify_user(user, i18n_key="ntf-subscription.gateways-unavailable")
         return
-
-    current_subscription = await subscription_dao.get_current(user.telegram_id)
-
-    if purchase_type == PurchaseType.RENEW:
-        if current_subscription:
-            matched_plan = await match_plan.system(
-                MatchPlanDto(plan_snapshot=current_subscription.plan_snapshot, plans=plans)
-            )
-            if matched_plan:
-                dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(matched_plan)
-                dialog_manager.dialog_data["only_single_plan"] = True
-                await dialog_manager.switch_to(state=Subscription.DURATION)
-                return
-            else:
-                logger.warning(f"{user.log} Tried to renew, but no matching plan found")
-                await notifier.notify_user(user, i18n_key="ntf-subscription.renew-plan-unavailable")
-                return
 
     if len(plans) == 1:
         logger.info(f"{user.log} Auto-selected single plan '{plans[0].id}'")

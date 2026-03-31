@@ -12,6 +12,7 @@ from src.application.dto import UserDto
 from src.application.services import BotService
 from src.application.use_cases.misc.queries.menu import GetMenuData
 from src.core.config import AppConfig
+from src.core.enums import ReferralRewardType
 from src.core.exceptions import MenuRenderError
 from src.core.utils.i18n_helpers import (
     i18n_format_device_limit,
@@ -207,12 +208,16 @@ async def invite_getter(
     support_url = bot_service.get_support_url(text=i18n.get("message.withdraw-points"))
     share_text = quote("Переходи по моей ссылке и получи 7 дней VPN")
     share_url = f"https://t.me/share/url?url={quote(referral_url, safe='')}&text={share_text}"
+    reward_days = await referral_dao.get_total_rewards_amount(
+        user.telegram_id, ReferralRewardType.EXTRA_DAYS
+    )
 
     return {
         "reward_type": settings.referral.reward.type,
         "referrals": referrals,
         "payments": payments,
         "points": user.points,
+        "reward_days": reward_days,
         "is_points_reward": settings.referral.reward.is_points,
         "has_points": True if user.points > 0 else False,
         "referral_url": referral_url,

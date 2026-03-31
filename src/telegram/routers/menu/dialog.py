@@ -98,16 +98,11 @@ menu = Window(
             id="send",
             when=~F["referral_enabled"],
         ),
-        Url(
-            text=I18nFormat("btn-menu.support"),
-            id="support",
-            url=Format("{support_url}"),
-        ),
     ),
     Row(
         Url(
             text=I18nFormat("btn-menu.support"),
-            id="support_secondary",
+            id="support",
             url=Format("{support_url}"),
         ),
         SwitchTo(

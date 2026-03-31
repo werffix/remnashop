@@ -47,8 +47,8 @@ btn-menu =
     .subscription = 💳 Подписка
     .subscription-manage = 💳 Управление подпиской
     .buy-subscription = 💳 Купить подписку
-    .invite = 👥 Пригласить
-    .about = 🚀 О проекте
+    .invite = 🤝 Реферальная программа
+    .about = ℹ️ О проекте
     .support = 🆘 Поддержка
     .dashboard = 🛠 Панель управления
 

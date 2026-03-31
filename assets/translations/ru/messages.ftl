@@ -1,8 +1,8 @@
 # Menu
 msg-main-menu =
-    <b>Главное меню</b>
+    ⚡️ Добро пожаловать в q1 vpn - интернет без ограничений!
 
-    Выберите нужный раздел ниже.
+    👇 Выберите нужный пункт в меню ниже
 
 msg-profile =
     <b>👤 Профиль:</b>
@@ -54,18 +54,16 @@ msg-menu-devices-confirm-delete-all =
     🗑 Удалить <b>все устройства</b>?
 
 msg-menu-invite =
-    <b>👥 Пригласить друзей</b>
-    
-    Делитесь вашей уникальной ссылкой и получайте вознаграждение в виде { $reward_type ->
-        [POINTS] <b>баллов, которые можно обменять на подписку или реальные деньги</b>
-        [EXTRA_DAYS] <b>бесплатных дней к вашей подписке</b>
-        *[OTHER] { $reward_type }
-    }!
+    <b>🤝 Реферальная программа</b>
+
+    Делитесь своей уникальной ссылкой с друзьями и получайте по 7 бесплатных дней к подписке!
+    А ваш друг тоже получит бонус - 7 дней бесплатно 🎁
 
     <b>📊 Статистика:</b>
     <blockquote>
     👥 Всего приглашенных: { $referrals }
     💳 Платежей по вашей ссылке: { $payments }
+    ⏳ Заработано дней: { $reward_days }
     { $reward_type -> 
     [POINTS] 💎 Ваши баллы: { $points }
     *[EXTRA_DAYS] { empty }
@@ -103,35 +101,6 @@ msg-menu-about-project =
     • Поддержку популярных устройств: iOS, Android, Windows, Linux
     • Одну персональную подписку для удобного подключения
     • Оперативную поддержку при вопросах по настройке
-
-    <b>💎 Что вы получаете:</b>
-    <blockquote>
-    { $max_level -> 
-    [1] За приглашенных друзей: { $reward_level_1 }
-    *[MORE]
-    { $identical_reward ->
-    [0]
-    1️⃣ За ваших друзей: { $reward_level_1 }
-    2️⃣ За приглашенных вашими друзьями: { $reward_level_2 }
-    *[1]
-    За ваших друзей и приглашенных вашими друзьями: { $reward_level_1 }
-    }
-    }
-    
-    { $reward_strategy_type ->
-    [AMOUNT] { $reward_type ->
-        [POINTS] { space }
-        [EXTRA_DAYS] <i>(Все дополнительные дни начисляются к вашей текущей подписке)</i>
-        *[OTHER] { $reward_type }
-    }
-    [PERCENT] { $reward_type ->
-        [POINTS] <i>(Процент баллов от стоимости их приобретенной подписки)</i>
-        [EXTRA_DAYS] <i>(Процент доп. дней от их приобретенной подписки)</i>
-        *[OTHER] { $reward_type }
-    }
-    *[OTHER] { $reward_strategy_type }
-    }
-    </blockquote>
 
 msg-invite-reward = { $value }{ $reward_strategy_type ->
     [AMOUNT] { $reward_type ->
@@ -284,7 +253,7 @@ msg-statistics-referrals =
     <blockquote>
     • <b>Выдано наград</b>: { $total_rewards_issued }
     • <b>Выдано баллов</b>: { $total_points_issued }
-    • <b>Выдано дней</b>: { $total_days_issued }
+    • <b>Заработано дней</b>: { $total_days_issued }
     </blockquote>
 
 

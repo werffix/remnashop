@@ -44,6 +44,8 @@ cd
 
 
  после обновления и запуска бота нужно остановить remnawave-nginx контейнер и запустить remnawave-nginx и потом бот сам запустится
+cd /opt/remnawave/nginx
+ sudo docker stop -t 0 remnawave-nginx
 
 
     </a>

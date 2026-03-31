@@ -43,6 +43,9 @@ cd
  cd /opt/remnashop && docker-compose pull && docker-compose down && RESET_ASSETS=true docker-compose up -d && docker-compose logs -f
 
 
+ после обновления и запуска бота нужно остановить remnawave-nginx контейнер и запустить remnawave-nginx и потом бот сам запустится
+
+
     </a>
 </p>
 </div>

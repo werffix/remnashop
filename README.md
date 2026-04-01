@@ -23,30 +23,71 @@
     <a href="https://github.com/snoups/remnashop/releases">
         <img src="https://img.shields.io/github/v/release/snoups/remnashop?label=Latest%20release&style=social" alt="Latest release">
 
-Инструкция обновы
+
+
+🚀 Обновление RemnaShop
+
+
+⸻
+
+
+📥 Клонирование репозитория
 
 cd
-
- git clone https://github.com/werffix/remnashop
-
-
-  cd remnashop
-
-  
- docker build -t ghcr.io/werffix/remnashop:latest .
- 
- echo токен из гит | docker login ghcr.io -u werffix --password-stdin
- 
- docker push ghcr.io/werffix/remnashop:latest
+rm -rf remnashop
+git clone https://github.com/werffix/remnashop
+cd remnashop
 
 
- cd /opt/remnashop && docker-compose pull && docker-compose down && RESET_ASSETS=true docker-compose up -d && docker-compose logs -f
+⸻
+
+🐳 Сборка и публикация Docker-образа
+
+docker build -t ghcr.io/werffix/remnashop:latest .
+
+echo <GITHUB_TOKEN> | docker login ghcr.io -u werffix --password-stdin
+
+docker push ghcr.io/werffix/remnashop:latest
 
 
- после обновления и запуска бота нужно остановить remnawave-nginx контейнер и запустить remnawave-nginx и потом бот сам запустится
+⸻
+
+🔄 Обновление и запуск сервиса
+
+cd /opt/remnashop
+
+docker-compose pull
+docker-compose down
+
+RESET_ASSETS=true docker-compose up -d
+
+docker-compose logs -f
+
+
+⸻
+
+⚠️ Важно после обновления
+
+После запуска бота необходимо перезапустить nginx-контейнер:
+
 cd /opt/remnawave/nginx
- sudo docker stop -t 0 remnawave-nginx
 
+sudo docker stop -t 0 remnawave-nginx
+
+Затем запустить контейнер remnawave-nginx снова (обычно через docker-compose up -d или ваш способ запуска).
+
+💡 После этого бот запустится автоматически.
+
+⸻
+
+📌 Примечания
+	•	Замените <GITHUB_TOKEN> на ваш реальный токен GitHub.
+	•	Убедитесь, что у вас есть доступ к ghcr.io.
+	•	Все команды предполагают наличие docker и docker-compose.
+
+⸻
+
+Если хочешь — могу добавить бейджи, структуру проекта или авто-деплой через GitHub Actions 👍
 
     </a>
 </p>

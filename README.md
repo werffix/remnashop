@@ -87,7 +87,6 @@ sudo docker stop -t 0 remnawave-nginx
 
 ⸻
 
-Если хочешь — могу добавить бейджи, структуру проекта или авто-деплой через GitHub Actions 👍
 
     </a>
 </p>

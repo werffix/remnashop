@@ -5,6 +5,7 @@ from loguru import logger
 from src.application.common import Redirect
 from src.core.constants import TARGET_TELEGRAM_ID
 from src.core.enums import PurchaseType
+from src.telegram.keyboards import get_main_menu_reply_keyboard
 from src.telegram.states import DashboardUser, MainMenu, Subscription
 
 
@@ -17,7 +18,19 @@ class RedirectImpl(Redirect):
         self.bot = bot
         self.bg_manager_factory = bg_manager_factory
 
+    async def _sync_reply_keyboard(self, telegram_id: int) -> None:
+        service_message = await self.bot.send_message(
+            chat_id=telegram_id,
+            text="\u2060",
+            reply_markup=get_main_menu_reply_keyboard(),
+        )
+        try:
+            await service_message.delete()
+        except Exception:
+            logger.debug(f"Failed to delete reply-keyboard sync message for '{telegram_id}'")
+
     async def to_main_menu(self, telegram_id: int) -> None:
+        await self._sync_reply_keyboard(telegram_id)
         bg_manager = self.bg_manager_factory.bg(
             bot=self.bot,
             user_id=telegram_id,
@@ -47,6 +60,7 @@ class RedirectImpl(Redirect):
         logger.info(f"User '{telegram_id}' redirected to user editor")
 
     async def to_success_trial(self, telegram_id: int) -> None:
+        await self._sync_reply_keyboard(telegram_id)
         bg_manager = self.bg_manager_factory.bg(
             bot=self.bot,
             user_id=telegram_id,
@@ -61,6 +75,7 @@ class RedirectImpl(Redirect):
         logger.info(f"User '{telegram_id}' redirected to success trial")
 
     async def to_success_payment(self, telegram_id: int, purchase_type: PurchaseType) -> None:
+        await self._sync_reply_keyboard(telegram_id)
         bg_manager = self.bg_manager_factory.bg(
             bot=self.bot,
             user_id=telegram_id,
@@ -76,6 +91,7 @@ class RedirectImpl(Redirect):
         logger.info(f"User '{telegram_id}' redirected to success payment")
 
     async def to_failed_payment(self, telegram_id: int) -> None:
+        await self._sync_reply_keyboard(telegram_id)
         bg_manager = self.bg_manager_factory.bg(
             bot=self.bot,
             user_id=telegram_id,

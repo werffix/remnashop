@@ -28,6 +28,15 @@ def _get_promocode_discount(dialog_manager: DialogManager) -> int:
     return int(dialog_manager.dialog_data.get("selected_promocode_discount", 0) or 0)
 
 
+def _hydrate_dialog_data_from_start_data(dialog_manager: DialogManager) -> None:
+    start_data = dialog_manager.start_data
+    if not isinstance(start_data, dict):
+        return
+
+    for key, value in start_data.items():
+        dialog_manager.dialog_data.setdefault(key, value)
+
+
 def _get_platega_method_label(method: int) -> str:
     mapping = {
         2: "СБП",
@@ -116,6 +125,7 @@ async def plans_getter(
     get_available_plans: FromDishka[GetAvailablePlans],
     **kwargs: Any,
 ) -> dict[str, Any]:
+    _hydrate_dialog_data_from_start_data(dialog_manager)
     raw_plans = dialog_manager.dialog_data.get("available_plans")
     plans = [retort.load(raw_plan, PlanDto) for raw_plan in raw_plans] if raw_plans else await get_available_plans.system(user)
 
@@ -136,6 +146,7 @@ async def duration_getter(
     pricing_service: FromDishka[PricingService],
     **kwargs: Any,
 ) -> dict[str, Any]:
+    _hydrate_dialog_data_from_start_data(dialog_manager)
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
 
     if not raw_plan:
@@ -192,6 +203,7 @@ async def payment_method_getter(
     user: UserDto,
     **kwargs: Any,
 ) -> dict[str, Any]:
+    _hydrate_dialog_data_from_start_data(dialog_manager)
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
 
     if not raw_plan:
@@ -267,6 +279,7 @@ async def confirm_getter(
     payment_gateway_dao: FromDishka[PaymentGatewayDao],
     **kwargs: Any,
 ) -> dict[str, Any]:
+    _hydrate_dialog_data_from_start_data(dialog_manager)
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
 
     if not raw_plan:

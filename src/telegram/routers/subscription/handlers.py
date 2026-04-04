@@ -2,7 +2,7 @@ from typing import Optional, TypedDict, cast
 
 from adaptix import Retort
 from aiogram.types import CallbackQuery, Message
-from aiogram_dialog import DialogManager
+from aiogram_dialog import DialogManager, StartMode
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Select
 from dishka import FromDishka
@@ -74,6 +74,15 @@ def _load_payment_data(dialog_manager: DialogManager) -> dict[str, CachedPayment
 
 def _get_promocode_discount(dialog_manager: DialogManager) -> int:
     return int(dialog_manager.dialog_data.get(CURRENT_PROMOCODE_DISCOUNT_KEY, 0) or 0)
+
+
+def _hydrate_dialog_data_from_start_data(dialog_manager: DialogManager) -> None:
+    start_data = dialog_manager.start_data
+    if not isinstance(start_data, dict):
+        return
+
+    for key, value in start_data.items():
+        dialog_manager.dialog_data.setdefault(key, value)
 
 
 def _get_payment_options(gateways: list[PaymentGatewayDto]) -> list[str]:
@@ -187,6 +196,7 @@ async def _open_purchase_flow(
     create_payment: CreatePayment,
     plan_dao: PlanDao,
     subscription_dao: SubscriptionDao,
+    force_start: bool = False,
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     plans = await _get_plans_for_purchase(
@@ -258,18 +268,50 @@ async def _open_purchase_flow(
                 if payment_data:
                     _save_payment_data(dialog_manager, payment_data)
 
-                await dialog_manager.switch_to(state=Subscription.CONFIRM)
+                target_state = Subscription.CONFIRM
+                if force_start:
+                    await dialog_manager.start(
+                        state=target_state,
+                        data=dict(dialog_manager.dialog_data),
+                        mode=StartMode.RESET_STACK,
+                    )
+                else:
+                    await dialog_manager.switch_to(state=target_state)
                 return
 
-            await dialog_manager.switch_to(state=Subscription.PAYMENT_METHOD)
+            target_state = Subscription.PAYMENT_METHOD
+            if force_start:
+                await dialog_manager.start(
+                    state=target_state,
+                    data=dict(dialog_manager.dialog_data),
+                    mode=StartMode.RESET_STACK,
+                )
+            else:
+                await dialog_manager.switch_to(state=target_state)
             return
 
-        await dialog_manager.switch_to(state=Subscription.DURATION)
+        target_state = Subscription.DURATION
+        if force_start:
+            await dialog_manager.start(
+                state=target_state,
+                data=dict(dialog_manager.dialog_data),
+                mode=StartMode.RESET_STACK,
+            )
+        else:
+            await dialog_manager.switch_to(state=target_state)
         return
 
     dialog_manager.dialog_data["only_single_plan"] = False
     dialog_manager.dialog_data["only_single_duration"] = False
-    await dialog_manager.switch_to(state=Subscription.PLANS)
+    target_state = Subscription.PLANS
+    if force_start:
+        await dialog_manager.start(
+            state=target_state,
+            data=dict(dialog_manager.dialog_data),
+            mode=StartMode.RESET_STACK,
+        )
+    else:
+        await dialog_manager.switch_to(state=target_state)
 
 
 @inject
@@ -352,6 +394,7 @@ async def on_plan_select(
     retort: FromDishka[Retort],
     plan_dao: FromDishka[PlanDao],
 ) -> None:
+    _hydrate_dialog_data_from_start_data(dialog_manager)
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     plan = None
     for raw_plan in dialog_manager.dialog_data.get("available_plans", []):
@@ -400,6 +443,7 @@ async def on_duration_select(
     pricing_service: FromDishka[PricingService],
     create_payment: FromDishka[CreatePayment],
 ) -> None:
+    _hydrate_dialog_data_from_start_data(dialog_manager)
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     logger.info(f"{user.log} Selected subscription duration '{selected_duration}' days")
     dialog_manager.dialog_data[CURRENT_DURATION_KEY] = selected_duration
@@ -485,6 +529,7 @@ async def on_payment_method_select(
     pricing_service: FromDishka[PricingService],
     create_payment: FromDishka[CreatePayment],
 ) -> None:
+    _hydrate_dialog_data_from_start_data(dialog_manager)
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     gateway_type, platega_payment_method = _parse_payment_option(selected_payment_method)
     logger.info(f"{user.log} Selected payment method '{selected_payment_method}'")
@@ -557,6 +602,7 @@ async def on_device_topup(
         create_payment=create_payment,
         plan_dao=plan_dao,
         subscription_dao=subscription_dao,
+        force_start=True,
     )
 
 
@@ -581,6 +627,7 @@ async def on_promocode_input(
     promocode_dao: FromDishka[PromocodeDao],
     notifier: FromDishka[Notifier],
 ) -> None:
+    _hydrate_dialog_data_from_start_data(dialog_manager)
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     if not message.text:

@@ -372,6 +372,10 @@ class UserPurchaseEvent(UserEvent):
                 return "event-subscription.renew"
             case PurchaseType.CHANGE:
                 return "event-subscription.change"
+            case PurchaseType.TRAFFIC_TOPUP:
+                return "event-subscription.change"
+            case PurchaseType.DEVICE_TOPUP:
+                return "event-subscription.change"
 
 
 @dataclass(frozen=True, kw_only=True)

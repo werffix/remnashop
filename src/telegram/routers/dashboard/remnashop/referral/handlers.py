@@ -10,6 +10,7 @@ from src.application.dto import UserDto
 from src.application.use_cases.settings.commands.referral import (
     ToggleReferralSystem,
     UpdateReferralAccrualStrategy,
+    UpdateReferralFriendRewardDays,
     UpdateReferralLevel,
     UpdateReferralRewardConfig,
     UpdateReferralRewardStrategy,
@@ -106,3 +107,27 @@ async def on_reward_input(
         await update_reward_config(user, message.text)
     except (ValueError, KeyError, IndexError):
         await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
+
+
+@inject
+async def on_friend_reward_input(
+    message: Message,
+    widget: MessageInput,
+    dialog_manager: DialogManager,
+    notifier: FromDishka[Notifier],
+    update_friend_reward_days: FromDishka[UpdateReferralFriendRewardDays],
+) -> None:
+    dialog_manager.show_mode = ShowMode.EDIT
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+
+    if not message.text or not message.text.strip().isdigit():
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
+        return
+
+    try:
+        await update_friend_reward_days(user, int(message.text.strip()))
+    except ValueError:
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
+        return
+
+    await dialog_manager.switch_to(state=RemnashopReferral.MAIN)

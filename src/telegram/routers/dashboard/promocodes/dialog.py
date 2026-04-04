@@ -18,6 +18,7 @@ from .handlers import (
     on_promocode_discount_input,
     on_promocode_expires_input,
     on_promocode_limit_input,
+    on_promocode_per_user_limit_input,
     on_promocode_save,
     on_promocode_select,
     on_promocode_toggle_active,
@@ -99,6 +100,13 @@ configurator = Window(
             id="limit",
             state=DashboardPromocodes.ALLOWED,
         ),
+        SwitchTo(
+            text=I18nFormat("btn-promocodes.limit-per-user"),
+            id="limit_per_user",
+            state=DashboardPromocodes.ALLOWED_PER_USER,
+        ),
+    ),
+    Row(
         SwitchTo(
             text=I18nFormat("btn-promocodes.expires"),
             id="expires",
@@ -192,4 +200,19 @@ expires = Window(
     state=DashboardPromocodes.LIFETIME,
 )
 
-router = Dialog(main, configurator, code, discount, limit, expires)
+limit_per_user = Window(
+    Banner(BannerName.PROMOCODE),
+    I18nFormat("msg-promocode-limit-per-user"),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=DashboardPromocodes.CONFIGURATOR,
+        ),
+    ),
+    MessageInput(func=on_promocode_per_user_limit_input),
+    IgnoreUpdate(),
+    state=DashboardPromocodes.ALLOWED_PER_USER,
+)
+
+router = Dialog(main, configurator, code, discount, limit, expires, limit_per_user)

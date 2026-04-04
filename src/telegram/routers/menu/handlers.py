@@ -84,6 +84,16 @@ async def on_channel_confirm(
     await on_start_dialog(user, dialog_manager)
 
 
+@router.callback_query(F.data == "close_support_message")
+async def on_close_support_message(callback: CallbackQuery) -> None:
+    await callback.answer()
+    if callback.message:
+        try:
+            await callback.message.delete()
+        except Exception:
+            logger.debug("Failed to delete support message")
+
+
 @router.message(F.text == MAIN_MENU_REPLY_TEXT)
 async def on_main_menu_reply_button(
     message: Message,

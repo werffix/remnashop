@@ -49,6 +49,7 @@ async def promocode_configurator_getter(
             code="PROMO10",
             discount_percent=10,
             max_activations=None,
+            max_activations_per_user=1,
             expires_at=None,
             is_active=True,
         )
@@ -64,6 +65,11 @@ async def promocode_configurator_getter(
         "code": promocode.code,
         "discount_percent": promocode.discount_percent,
         "max_activations": promocode.max_activations if promocode.max_activations else "Не ограничено",
+        "max_activations_per_user": (
+            promocode.max_activations_per_user
+            if promocode.max_activations_per_user
+            else "Не ограничено"
+        ),
         "expires_at": _format_datetime(promocode.expires_at),
         "is_active": promocode.is_active,
         "activations": activations,

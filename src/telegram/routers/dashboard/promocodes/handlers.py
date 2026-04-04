@@ -46,6 +46,7 @@ async def on_promocode_create(
         code=f"PROMO{datetime.now().strftime('%m%d%H%M%S')}",
         discount_percent=10,
         max_activations=None,
+        max_activations_per_user=1,
         expires_at=None,
         is_active=True,
     )
@@ -207,6 +208,35 @@ async def on_promocode_limit_input(
 
     promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
     promocode.max_activations = limit
+    dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
+    await dialog_manager.switch_to(DashboardPromocodes.CONFIGURATOR)
+
+
+@inject
+async def on_promocode_per_user_limit_input(
+    message: Message,
+    widget: MessageInput,
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    notifier: FromDishka[Notifier],
+) -> None:
+    dialog_manager.show_mode = ShowMode.EDIT
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    if not message.text:
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
+        return
+
+    raw_value = message.text.strip().lower()
+    if raw_value in {"0", "нет", "none", "null", "-"}:
+        limit = None
+    elif raw_value.isdigit() and int(raw_value) > 0:
+        limit = int(raw_value)
+    else:
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
+        return
+
+    promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
+    promocode.max_activations_per_user = limit
     dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
     await dialog_manager.switch_to(DashboardPromocodes.CONFIGURATOR)
 

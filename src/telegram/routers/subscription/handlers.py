@@ -81,12 +81,13 @@ async def _notify_topup_support(callback: CallbackQuery, text: str) -> None:
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Перейти", url=Q1_SUPPORT_URL)],
+            [InlineKeyboardButton(text="Закрыть", callback_data="close_support_message")],
         ]
     )
 
+    await callback.answer()
     if callback.message:
         await callback.message.answer(text=text, reply_markup=keyboard)
-    await callback.answer()
 
 
 def _hydrate_dialog_data_from_start_data(dialog_manager: DialogManager) -> None:
@@ -656,11 +657,13 @@ async def on_promocode_input(
             await notifier.notify_user(user, i18n_key="ntf-promocode.limit-reached")
             return
 
-    already_used = await promocode_dao.has_user_activation(
+    user_activations = await promocode_dao.count_user_activations(
         promocode.id,  # type: ignore[arg-type]
         user.telegram_id,
     )
-    if already_used:
+    if promocode.max_activations_per_user is not None and (
+        user_activations >= promocode.max_activations_per_user
+    ):
         await notifier.notify_user(user, i18n_key="ntf-promocode.already-used")
         return
 

@@ -41,6 +41,8 @@ from src.core.utils.i18n_helpers import (
 )
 from src.core.utils.time import datetime_now
 
+REFERRAL_FRIEND_TRIAL_BONUS_DAYS = 7
+
 
 @dataclass(frozen=True)
 class ActivateTrialSubscriptionDto:
@@ -142,12 +144,6 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
             await self.redirect.to_success_trial(user.telegram_id)
 
     async def _assign_trial_bonus_to_referred_user(self, user: UserDto) -> None:
-        settings = await self.settings_dao.get()
-        friend_reward_days = settings.referral.friend_reward_days
-
-        if friend_reward_days <= 0:
-            return
-
         referral, _ = await self.referral_dao.get_referral_chain(user.telegram_id)
         if not referral:
             return
@@ -155,7 +151,7 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
         await self.add_subscription_duration.system(
             AddSubscriptionDurationDto(
                 telegram_id=user.telegram_id,
-                days=friend_reward_days,
+                days=REFERRAL_FRIEND_TRIAL_BONUS_DAYS,
             )
         )
 

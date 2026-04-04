@@ -371,6 +371,66 @@ class PurchaseSubscription(Interactor[PurchaseSubscriptionDto, None]):
                     await self.uow.commit()
                     logger.debug(f"{actor.log} Changed subscription for user '{user.telegram_id}'")
 
+                # 4. TRAFFIC TOP-UP
+                elif purchase_type == PurchaseType.TRAFFIC_TOPUP:
+                    if not subscription:
+                        raise ValueError(
+                            f"No subscription found for traffic top-up for user '{user.telegram_id}'"
+                        )
+
+                    if plan.duration > 0:
+                        base_date = max(subscription.expire_at, datetime_now())
+                        subscription.expire_at = base_date + timedelta(days=plan.duration)
+
+                    subscription.traffic_limit += plan.traffic_limit
+                    subscription.plan_snapshot.duration = max(
+                        subscription.plan_snapshot.duration,
+                        transaction.plan_snapshot.duration,
+                    )
+
+                    await self.remnawave.update_user(
+                        user=user,
+                        uuid=subscription.user_remna_id,
+                        subscription=subscription,
+                        reset_traffic=False,
+                    )
+
+                    await self.subscription_dao.update(subscription)
+                    await self.uow.commit()
+                    logger.debug(
+                        f"{actor.log} Increased traffic limit for user '{user.telegram_id}'"
+                    )
+
+                # 5. DEVICE TOP-UP
+                elif purchase_type == PurchaseType.DEVICE_TOPUP:
+                    if not subscription:
+                        raise ValueError(
+                            f"No subscription found for device top-up for user '{user.telegram_id}'"
+                        )
+
+                    if plan.duration > 0:
+                        base_date = max(subscription.expire_at, datetime_now())
+                        subscription.expire_at = base_date + timedelta(days=plan.duration)
+
+                    subscription.device_limit += plan.device_limit
+                    subscription.plan_snapshot.duration = max(
+                        subscription.plan_snapshot.duration,
+                        transaction.plan_snapshot.duration,
+                    )
+
+                    await self.remnawave.update_user(
+                        user=user,
+                        uuid=subscription.user_remna_id,
+                        subscription=subscription,
+                        reset_traffic=False,
+                    )
+
+                    await self.subscription_dao.update(subscription)
+                    await self.uow.commit()
+                    logger.debug(
+                        f"{actor.log} Increased device limit for user '{user.telegram_id}'"
+                    )
+
                 else:
                     raise ValueError(
                         f"Unknown purchase type '{purchase_type}' for user '{user.telegram_id}'"

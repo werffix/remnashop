@@ -14,6 +14,7 @@ from src.application.common import (
 from src.application.common.dao import (
     PaymentGatewayDao,
     ReferralDao,
+    PromocodeDao,
     SubscriptionDao,
     TransactionDao,
     UserDao,
@@ -111,6 +112,8 @@ class CreatePaymentDto:
     pricing: PriceDetailsDto
     purchase_type: PurchaseType
     gateway_type: PaymentGatewayType
+    promocode_id: int | None = None
+    platega_payment_method: int | None = None
 
 
 class CreatePayment(Interactor[CreatePaymentDto, PaymentResultDto]):
@@ -132,6 +135,12 @@ class CreatePayment(Interactor[CreatePaymentDto, PaymentResultDto]):
 
     async def _execute(self, actor: UserDto, data: CreatePaymentDto) -> PaymentResultDto:
         gateway_instance = await self.get_payment_gateway_instance.system(data.gateway_type)
+        if (
+            data.platega_payment_method is not None
+            and gateway_instance.data.type == PaymentGatewayType.PLATEGA
+            and isinstance(gateway_instance.data.settings, PlategaGatewaySettingsDto)
+        ):
+            gateway_instance.data.settings.payment_method = data.platega_payment_method
         i18n = self.translator_hub.get_translator_by_locale(actor.language)
 
         key, kw = i18n_format_days(data.plan_snapshot.duration)
@@ -148,6 +157,7 @@ class CreatePayment(Interactor[CreatePaymentDto, PaymentResultDto]):
             status=TransactionStatus.PENDING,
             purchase_type=data.purchase_type,
             gateway_type=gateway_instance.data.type,
+            promocode_id=data.promocode_id,
             pricing=data.pricing,
             currency=gateway_instance.data.currency,
             plan_snapshot=data.plan_snapshot,
@@ -240,6 +250,7 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
         transaction_dao: TransactionDao,
         subscription_dao: SubscriptionDao,
         referral_dao: ReferralDao,
+        promocode_dao: PromocodeDao,
         event_publisher: EventPublisher,
         notifier: Notifier,
         i18n: TranslatorRunner,
@@ -251,6 +262,7 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
         self.transaction_dao = transaction_dao
         self.subscription_dao = subscription_dao
         self.referral_dao = referral_dao
+        self.promocode_dao = promocode_dao
         self.event_publisher = event_publisher
         self.notifier = notifier
         self.i18n = i18n
@@ -344,6 +356,18 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
         await self.purchase_subscription.system(
             PurchaseSubscriptionDto(user, transaction, subscription)
         )
+
+        if transaction.promocode_id:
+            already_activated = await self.promocode_dao.has_user_activation(
+                transaction.promocode_id,
+                user.telegram_id,
+            )
+            if not already_activated:
+                await self.promocode_dao.create_activation(
+                    promocode_id=transaction.promocode_id,
+                    user_telegram_id=user.telegram_id,
+                    transaction_payment_id=transaction.payment_id,
+                )
 
         if not transaction.pricing.is_free:
             await self.assign_referral_rewards.system(AssignReferralRewardsDto(user, transaction))

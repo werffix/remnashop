@@ -27,6 +27,7 @@ class Transaction(BaseSql, TimestampMixin):
 
     purchase_type: Mapped[PurchaseType]
     gateway_type: Mapped[PaymentGatewayType]
+    promocode_id: Mapped[int | None] = mapped_column(ForeignKey("promocodes.id"), nullable=True)
 
     pricing: Mapped[dict[str, Any]]
     currency: Mapped[Currency]

@@ -27,6 +27,7 @@ def upgrade() -> None:
             sa.Column("code", sa.String(length=64), nullable=False),
             sa.Column("discount_percent", sa.Integer(), nullable=False),
             sa.Column("max_activations", sa.Integer(), nullable=True),
+            sa.Column("max_activations_per_user", sa.Integer(), nullable=True),
             sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
             sa.Column(
@@ -79,6 +80,14 @@ def upgrade() -> None:
             op.add_column(
                 "promocodes",
                 sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
+            )
+        if "max_activations_per_user" not in promocode_columns:
+            op.add_column(
+                "promocodes",
+                sa.Column("max_activations_per_user", sa.Integer(), nullable=True),
+            )
+            op.execute(
+                "UPDATE promocodes SET max_activations_per_user = 1 WHERE max_activations_per_user IS NULL"
             )
 
     inspector = sa.inspect(conn)
@@ -208,5 +217,7 @@ def downgrade() -> None:
     promocode_columns = {column["name"] for column in inspector.get_columns("promocodes")}
     if "expires_at" in promocode_columns:
         op.drop_column("promocodes", "expires_at")
+    if "max_activations_per_user" in promocode_columns:
+        op.drop_column("promocodes", "max_activations_per_user")
     if "discount_percent" in promocode_columns:
         op.drop_column("promocodes", "discount_percent")

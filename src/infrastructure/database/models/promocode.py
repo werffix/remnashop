@@ -16,6 +16,7 @@ class Promocode(BaseSql, TimestampMixin):
     code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     discount_percent: Mapped[int]
     max_activations: Mapped[Optional[int]]
+    max_activations_per_user: Mapped[Optional[int]]
     expires_at: Mapped[Optional[datetime]]
     is_active: Mapped[bool]
 

@@ -83,10 +83,19 @@ class PromocodeDaoImpl(PromocodeDao, BaseDaoImpl):
         )
         return int(await self.session.scalar(stmt) or 0)
 
-    async def has_user_activation(self, promocode_id: int, user_telegram_id: int) -> bool:
+    async def count_user_activations(self, promocode_id: int, user_telegram_id: int) -> int:
         stmt = select(func.count(PromocodeActivation.id)).where(
             PromocodeActivation.promocode_id == promocode_id,
             PromocodeActivation.user_telegram_id == user_telegram_id,
+        )
+        return int(await self.session.scalar(stmt) or 0)
+
+    async def has_user_activation(self, promocode_id: int, user_telegram_id: int) -> bool:
+        return bool(await self.count_user_activations(promocode_id, user_telegram_id))
+
+    async def has_activation_for_transaction(self, transaction_payment_id: UUID) -> bool:
+        stmt = select(func.count(PromocodeActivation.id)).where(
+            PromocodeActivation.transaction_payment_id == transaction_payment_id
         )
         return bool(await self.session.scalar(stmt) or 0)
 

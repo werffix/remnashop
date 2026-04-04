@@ -226,6 +226,7 @@ btn-promocodes =
     .code = 🏷 Название промокода
     .discount = 💸 Процент скидки
     .limit = 👥 Сколько людей может ввести
+    .limit-per-user = 🙍 Сколько раз на пользователя
     .expires = ⏳ Дата истечения
     .active = { $is_active ->
         [1] 🟢 Включен
@@ -309,6 +310,7 @@ btn-referral =
     .accrual-strategy = 📍 Условие начисления
     .reward-strategy = ⚖️ Форма начисления
     .reward = 🎁 Награда
+    .friend-reward = 🎁 Награда другу
     
     .enable = { $is_enable -> 
     [1] 🟢 Включена

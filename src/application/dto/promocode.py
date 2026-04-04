@@ -11,6 +11,7 @@ class PromocodeDto(BaseDto, TrackableMixin, TimestampMixin):
     code: str
     discount_percent: int
     max_activations: Optional[int] = None
+    max_activations_per_user: Optional[int] = 1
     expires_at: Optional[datetime] = None
     is_active: bool = True
 

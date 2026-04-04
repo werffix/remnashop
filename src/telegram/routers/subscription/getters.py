@@ -9,11 +9,12 @@ from loguru import logger
 from src.application.common import TranslatorRunner
 from src.application.common.dao import PaymentGatewayDao, PlanDao, SettingsDao, SubscriptionDao
 from src.application.dto import PlanDto, PriceDetailsDto, UserDto
+from src.application.dto.payment_gateway import PlategaGatewaySettingsDto
 from src.application.services import PricingService
 from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.config import AppConfig
-from src.core.enums import PurchaseType
+from src.core.enums import PaymentGatewayType, PurchaseType
 from src.core.utils.i18n_helpers import (
     i18n_format_days,
     i18n_format_device_limit,
@@ -21,6 +22,33 @@ from src.core.utils.i18n_helpers import (
     i18n_format_traffic_limit,
 )
 from src.telegram.states import Subscription
+
+
+def _get_promocode_discount(dialog_manager: DialogManager) -> int:
+    return int(dialog_manager.dialog_data.get("selected_promocode_discount", 0) or 0)
+
+
+def _get_platega_method_label(method: int) -> str:
+    mapping = {
+        2: "СБП",
+        11: "Карта",
+        13: "Криптовалюта",
+    }
+    return mapping.get(method, str(method))
+
+
+def _count_payment_options(gateways: list[Any]) -> int:
+    count = 0
+    for gateway in gateways:
+        if gateway.type == PaymentGatewayType.PLATEGA and isinstance(
+            gateway.settings, PlategaGatewaySettingsDto
+        ):
+            methods = gateway.settings.payment_methods
+            count += len(methods)
+            continue
+        count += 1
+    return count
+
 
 @inject
 async def subscription_getter(
@@ -83,19 +111,15 @@ async def plan_getter(
 async def plans_getter(
     dialog_manager: DialogManager,
     user: UserDto,
+    retort: FromDishka[Retort],
     i18n: FromDishka[TranslatorRunner],
     get_available_plans: FromDishka[GetAvailablePlans],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    plans = await get_available_plans.system(user)
+    raw_plans = dialog_manager.dialog_data.get("available_plans")
+    plans = [retort.load(raw_plan, PlanDto) for raw_plan in raw_plans] if raw_plans else await get_available_plans.system(user)
 
-    formatted_plans = [
-        {
-            "id": plan.id,
-            "name": i18n.get(plan.name),
-        }
-        for plan in plans
-    ]
+    formatted_plans = [{"id": plan.id, "name": i18n.get(plan.name)} for plan in plans]
 
     return {
         "plans": formatted_plans,
@@ -127,7 +151,12 @@ async def duration_getter(
 
     for duration in plan.durations:
         key, kw = i18n_format_days(duration.days)
-        price = pricing_service.calculate(user, duration.get_price(currency), currency)
+        price = pricing_service.calculate(
+            user,
+            duration.get_price(currency),
+            currency,
+            extra_discount_percent=_get_promocode_discount(dialog_manager),
+        )
         durations.append(
             {
                 "days": duration.days,
@@ -159,6 +188,8 @@ async def payment_method_getter(
     retort: FromDishka[Retort],
     i18n: FromDishka[TranslatorRunner],
     payment_gateway_dao: FromDishka[PaymentGatewayDao],
+    pricing_service: FromDishka[PricingService],
+    user: UserDto,
     **kwargs: Any,
 ) -> dict[str, Any]:
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
@@ -178,10 +209,36 @@ async def payment_method_getter(
 
     payment_methods = []
     for gateway in gateways:
+        pricing = pricing_service.calculate(
+            user,
+            duration.get_price(gateway.currency),
+            gateway.currency,
+            extra_discount_percent=_get_promocode_discount(dialog_manager),
+        )
+        if gateway.type == PaymentGatewayType.PLATEGA and isinstance(
+            gateway.settings, PlategaGatewaySettingsDto
+        ):
+            methods = gateway.settings.payment_methods
+            if not methods:
+                continue
+            for method in methods:
+                payment_methods.append(
+                    {
+                        "id": f"{gateway.type.value}:{method}",
+                        "gateway_type": gateway.type,
+                        "label": _get_platega_method_label(method),
+                        "price": pricing.final_amount,
+                        "currency": gateway.currency.symbol,
+                    }
+                )
+            continue
+
         payment_methods.append(
             {
+                "id": gateway.type.value,
                 "gateway_type": gateway.type,
-                "price": duration.get_price(gateway.currency),
+                "label": i18n.get("gateway-type", gateway_type=gateway.type),
+                "price": pricing.final_amount,
                 "currency": gateway.currency.symbol,
             }
         )
@@ -252,7 +309,7 @@ async def confirm_getter(
         "original_amount": pricing.original_amount,
         "currency": payment_gateway.currency.symbol,
         "url": result_url,
-        "only_single_gateway": len(gateways) == 1,
+        "only_single_gateway": _count_payment_options(gateways) == 1,
         "only_single_duration": only_single_duration,
         "is_free": is_free,
     }

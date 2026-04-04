@@ -1,5 +1,6 @@
 from aiogram.enums import ButtonStyle
 from aiogram_dialog import Dialog, Window
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Column, Group, Row, Select, SwitchTo, Url
 from aiogram_dialog.widgets.style import Style
 from aiogram_dialog.widgets.text import Format
@@ -26,6 +27,7 @@ from .handlers import (
     on_get_subscription,
     on_payment_method_select,
     on_plan_select,
+    on_promocode_input,
     on_subscription_plans,
 )
 
@@ -47,19 +49,11 @@ subscription = Window(
         ),
         Button(
             text=I18nFormat("btn-subscription.change"),
-            id=f"{PAYMENT_PREFIX}{PurchaseType.CHANGE}",
+            id=f"{PAYMENT_PREFIX}{PurchaseType.TRAFFIC_TOPUP}",
             on_click=on_subscription_plans,
             when=F["has_active_subscription"],
         ),
     ),
-    # Row(
-    #     Button(
-    #         text=I18nFormat("btn-subscription.promocode"),
-    #         id=f"{PAYMENT_PREFIX}promocode",
-    #         on_click=show_dev_popup,
-    #         # state=Subscription.PROMOCODE,
-    #     ),
-    # ),
     *back_main_menu_button,
     IgnoreUpdate(),
     state=Subscription.MAIN,
@@ -153,16 +147,23 @@ payment_method = Window(
     Column(
         Select(
             text=I18nFormat(
-                "btn-subscription.payment-method",
-                gateway_type=F["item"]["gateway_type"],
+                "btn-subscription.payment-method-option",
+                label=F["item"]["label"],
                 price=F["item"]["price"],
                 currency=F["item"]["currency"],
             ),
             id=f"{PAYMENT_PREFIX}select_payment_method",
-            item_id_getter=lambda item: item["gateway_type"],
+            item_id_getter=lambda item: item["id"],
             items="payment_methods",
-            type_factory=PaymentGatewayType,
+            type_factory=str,
             on_click=on_payment_method_select,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-subscription.promocode"),
+            id=f"{PAYMENT_PREFIX}promocode",
+            state=Subscription.PROMOCODE,
         ),
     ),
     Row(
@@ -185,6 +186,22 @@ payment_method = Window(
     IgnoreUpdate(),
     state=Subscription.PAYMENT_METHOD,
     getter=payment_method_getter,
+)
+
+promocode = Window(
+    Banner(BannerName.SUBSCRIPTION),
+    I18nFormat("msg-subscription-promocode"),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-subscription.back-payment-method"),
+            id=f"{PAYMENT_PREFIX}back_from_promocode",
+            state=Subscription.PAYMENT_METHOD,
+        ),
+    ),
+    *back_main_menu_button,
+    MessageInput(func=on_promocode_input),
+    IgnoreUpdate(),
+    state=Subscription.PROMOCODE,
 )
 
 confirm = Window(
@@ -271,6 +288,7 @@ router = Dialog(
     plans,
     duration,
     payment_method,
+    promocode,
     confirm,
     success_payment,
     success_trial,

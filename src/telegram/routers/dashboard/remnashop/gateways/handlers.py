@@ -8,7 +8,9 @@ from loguru import logger
 
 from src.application.common import Notifier
 from src.application.common.dao import PaymentGatewayDao
+from src.application.common.uow import UnitOfWork
 from src.application.dto import MessagePayloadDto, UserDto
+from src.application.dto.payment_gateway import PlategaGatewaySettingsDto
 from src.application.use_cases.gateways.commands.configuration import (
     MovePaymentGatewayUp,
     TogglePaymentGatewayActive,
@@ -172,3 +174,31 @@ async def on_gateway_move(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     gateway_id = int(dialog_manager.item_id)  # type: ignore[attr-defined]
     await move_payment_gateway_up(user, gateway_id)
+
+
+@inject
+async def on_platega_method_toggle(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    payment_gateway_dao: FromDishka[PaymentGatewayDao],
+    uow: FromDishka[UnitOfWork],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    gateway_id = dialog_manager.dialog_data["gateway_id"]
+    if not callback.data:
+        raise ValueError("Callback data is empty")
+    field_name = callback.data.removeprefix("platega_method_")
+    gateway = await payment_gateway_dao.get_by_id(gateway_id)
+
+    if not gateway or not isinstance(gateway.settings, PlategaGatewaySettingsDto):
+        raise ValueError(f"Gateway '{gateway_id}' is not platega")
+
+    current_value = getattr(gateway.settings, field_name)
+    setattr(gateway.settings, field_name, not current_value)
+
+    async with uow:
+        await payment_gateway_dao.update(gateway)
+        await uow.commit()
+
+    logger.info(f"{user.log} Toggled platega field '{field_name}' to '{not current_value}'")

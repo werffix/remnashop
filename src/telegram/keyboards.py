@@ -1,7 +1,7 @@
 from typing import Final, Optional
 
 from aiogram.enums import ButtonStyle
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram_dialog import StartMode
 from aiogram_dialog.widgets.kbd import CopyText, Group, ListGroup, Row, Start, Url, WebApp
@@ -16,6 +16,7 @@ from src.telegram.widgets import I18nFormat
 
 CALLBACK_CHANNEL_CONFIRM: Final[str] = "channel_confirm"
 CALLBACK_RULES_ACCEPT: Final[str] = "rules_accept"
+MAIN_MENU_REPLY_TEXT: Final[str] = "🏠 Главное меню"
 
 
 def build_buttons_row(row: int) -> Group:
@@ -98,10 +99,6 @@ def get_goto_buttons(support_url: str, is_referral_enable: bool) -> list[InlineK
         InlineKeyboardButton(
             text="btn-goto.subscription",
             callback_data=f"{GOTO_PREFIX}{Subscription.MAIN.state}",
-        ),
-        InlineKeyboardButton(
-            text="btn-goto.promocode",
-            callback_data=f"{GOTO_PREFIX}{Subscription.PROMOCODE.state}",
         ),
     ]
 
@@ -247,3 +244,11 @@ def get_boosty_keyboard() -> InlineKeyboardMarkup:
     )
 
     return builder.as_markup()
+
+
+def get_main_menu_reply_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=MAIN_MENU_REPLY_TEXT)]],
+        resize_keyboard=True,
+        is_persistent=True,
+    )

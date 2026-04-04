@@ -7,7 +7,7 @@ from dishka.integrations.aiogram_dialog import inject
 from src.application.common.dao import PaymentGatewayDao, SettingsDao
 from src.application.dto import PaymentGatewayDto
 from src.core.config import AppConfig
-from src.core.enums import Currency
+from src.core.enums import Currency, PaymentGatewayType
 
 
 @inject
@@ -53,6 +53,10 @@ async def gateway_getter(
         "gateway_type": gateway.type,
         "is_active": gateway.is_active,
         "settings": gateway.settings.as_list,
+        "is_platega": gateway.type == PaymentGatewayType.PLATEGA,
+        "sbp_enabled": getattr(gateway.settings, "sbp_enabled", False),
+        "card_enabled": getattr(gateway.settings, "card_enabled", False),
+        "crypto_enabled": getattr(gateway.settings, "crypto_enabled", False),
         "webhook": config.get_webhook(gateway.type),
         "requires_webhook": gateway.requires_webhook,
     }

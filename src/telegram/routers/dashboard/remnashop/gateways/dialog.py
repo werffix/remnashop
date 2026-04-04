@@ -35,6 +35,7 @@ from .handlers import (
     on_gateway_move,
     on_gateway_select,
     on_gateway_test,
+    on_platega_method_toggle,
 )
 
 gateways = Window(
@@ -109,6 +110,35 @@ gateway_settings = Window(
             on_click=on_field_select,
         ),
         width=2,
+    ),
+    Row(
+        Button(
+            text=I18nFormat("btn-gateway.platega-method", label="СБП", enabled=F["sbp_enabled"]),
+            id="platega_method_sbp_enabled",
+            on_click=on_platega_method_toggle,
+        ),
+        Button(
+            text=I18nFormat(
+                "btn-gateway.platega-method",
+                label="Карта",
+                enabled=F["card_enabled"],
+            ),
+            id="platega_method_card_enabled",
+            on_click=on_platega_method_toggle,
+        ),
+        when=F["is_platega"],
+    ),
+    Row(
+        Button(
+            text=I18nFormat(
+                "btn-gateway.platega-method",
+                label="Криптовалюта",
+                enabled=F["crypto_enabled"],
+            ),
+            id="platega_method_crypto_enabled",
+            on_click=on_platega_method_toggle,
+        ),
+        when=F["is_platega"],
     ),
     Row(
         CopyText(

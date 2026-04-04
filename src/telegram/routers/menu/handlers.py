@@ -28,9 +28,23 @@ from src.core.enums import MediaType
 from src.core.utils.i18n_helpers import i18n_format_expire_time
 from src.core.utils.time import get_traffic_reset_delta
 from src.telegram.keyboards import CALLBACK_CHANNEL_CONFIRM, CALLBACK_RULES_ACCEPT
+from src.telegram.keyboards import MAIN_MENU_REPLY_TEXT, get_main_menu_reply_keyboard
 from src.telegram.states import MainMenu
 
 router = Router(name=__name__)
+
+
+async def ensure_main_menu_reply_keyboard(message: Message) -> None:
+    # Reply keyboard cannot be attached to inline-dialog messages,
+    # so we synchronize it via a lightweight service message.
+    service_message = await message.answer(
+        text="\u2060",
+        reply_markup=get_main_menu_reply_keyboard(),
+    )
+    try:
+        await service_message.delete()
+    except Exception:
+        logger.debug("Failed to delete reply-keyboard sync message")
 
 
 async def on_start_dialog(user: UserDto, dialog_manager: DialogManager) -> None:
@@ -44,6 +58,7 @@ async def on_start_dialog(user: UserDto, dialog_manager: DialogManager) -> None:
 
 @router.message(CommandStart(ignore_case=True))
 async def on_start_command(message: Message, user: UserDto, dialog_manager: DialogManager) -> None:
+    await ensure_main_menu_reply_keyboard(message)
     await on_start_dialog(user, dialog_manager)
 
 
@@ -53,6 +68,8 @@ async def on_rules_accept(
     user: UserDto,
     dialog_manager: DialogManager,
 ) -> None:
+    if callback.message:
+        await ensure_main_menu_reply_keyboard(callback.message)
     await on_start_dialog(user, dialog_manager)
 
 
@@ -62,6 +79,18 @@ async def on_channel_confirm(
     user: UserDto,
     dialog_manager: DialogManager,
 ) -> None:
+    if callback.message:
+        await ensure_main_menu_reply_keyboard(callback.message)
+    await on_start_dialog(user, dialog_manager)
+
+
+@router.message(F.text == MAIN_MENU_REPLY_TEXT)
+async def on_main_menu_reply_button(
+    message: Message,
+    user: UserDto,
+    dialog_manager: DialogManager,
+) -> None:
+    await ensure_main_menu_reply_keyboard(message)
     await on_start_dialog(user, dialog_manager)
 
 

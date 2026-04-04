@@ -20,6 +20,7 @@ from src.core.constants import INLINE_QUERY_INVITE
 from src.core.enums import BannerName, SubscriptionStatus
 from src.telegram.keyboards import connect_buttons, custom_buttons
 from src.telegram.routers.dashboard.users.handlers import on_user_search
+from src.telegram.routers.subscription.handlers import on_device_topup
 from src.telegram.states import Dashboard, MainMenu, Subscription
 from src.telegram.utils import require_permission
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
@@ -213,6 +214,13 @@ devices = Window(
             id="reissue",
             state=MainMenu.DEVICE_CONFIRM_REISSUE,
             style=Style(ButtonStyle.PRIMARY),
+        ),
+    ),
+    Row(
+        Button(
+            text=I18nFormat("btn-devices.buy-more"),
+            id="buy_more_devices",
+            on_click=on_device_topup,
         ),
     ),
     Row(

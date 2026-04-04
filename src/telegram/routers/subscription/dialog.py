@@ -29,6 +29,7 @@ from .handlers import (
     on_plan_select,
     on_promocode_input,
     on_subscription_plans,
+    on_traffic_topup,
 )
 
 subscription = Window(
@@ -50,7 +51,7 @@ subscription = Window(
         Button(
             text=I18nFormat("btn-subscription.change"),
             id=f"{PAYMENT_PREFIX}{PurchaseType.TRAFFIC_TOPUP}",
-            on_click=on_subscription_plans,
+            on_click=on_traffic_topup,
             when=F["has_active_subscription"],
         ),
     ),

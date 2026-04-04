@@ -1,7 +1,7 @@
 from typing import Optional, TypedDict, cast
 
 from adaptix import Retort
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram_dialog import DialogManager, StartMode
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Select
@@ -39,6 +39,7 @@ CURRENT_METHOD_OPTION_KEY = "selected_payment_method_option"
 CURRENT_PLATEGA_METHOD_KEY = "selected_platega_payment_method"
 CURRENT_PROMOCODE_ID_KEY = "selected_promocode_id"
 CURRENT_PROMOCODE_DISCOUNT_KEY = "selected_promocode_discount"
+Q1_SUPPORT_URL = "https://t.me/q1support_bot"
 
 
 class CachedPaymentData(TypedDict):
@@ -74,6 +75,18 @@ def _load_payment_data(dialog_manager: DialogManager) -> dict[str, CachedPayment
 
 def _get_promocode_discount(dialog_manager: DialogManager) -> int:
     return int(dialog_manager.dialog_data.get(CURRENT_PROMOCODE_DISCOUNT_KEY, 0) or 0)
+
+
+async def _notify_topup_support(callback: CallbackQuery, text: str) -> None:
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Перейти", url=Q1_SUPPORT_URL)],
+        ]
+    )
+
+    if callback.message:
+        await callback.message.answer(text=text, reply_markup=keyboard)
+    await callback.answer()
 
 
 def _hydrate_dialog_data_from_start_data(dialog_manager: DialogManager) -> None:
@@ -582,27 +595,21 @@ async def on_device_topup(
     callback: CallbackQuery,
     widget: Button,
     dialog_manager: DialogManager,
-    retort: FromDishka[Retort],
-    payment_gateway_dao: FromDishka[PaymentGatewayDao],
-    pricing_service: FromDishka[PricingService],
-    notifier: FromDishka[Notifier],
-    get_available_plans: FromDishka[GetAvailablePlans],
-    create_payment: FromDishka[CreatePayment],
-    plan_dao: FromDishka[PlanDao],
-    subscription_dao: FromDishka[SubscriptionDao],
 ) -> None:
-    await _open_purchase_flow(
-        purchase_type=PurchaseType.DEVICE_TOPUP,
-        dialog_manager=dialog_manager,
-        retort=retort,
-        payment_gateway_dao=payment_gateway_dao,
-        pricing_service=pricing_service,
-        notifier=notifier,
-        get_available_plans=get_available_plans,
-        create_payment=create_payment,
-        plan_dao=plan_dao,
-        subscription_dao=subscription_dao,
-        force_start=True,
+    await _notify_topup_support(
+        callback,
+        "Чтобы докупить устройства, обратитесь в поддержку:",
+    )
+
+
+async def on_traffic_topup(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+) -> None:
+    await _notify_topup_support(
+        callback,
+        "Чтобы докупить трафик, обратитесь в поддержку:",
     )
 
 

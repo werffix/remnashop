@@ -64,6 +64,7 @@ class DashboardPromocodes(StatesGroup):
     REWARD = State()
     LIFETIME = State()
     ALLOWED = State()
+    ALLOWED_PER_USER = State()
 
 
 class DashboardAccess(StatesGroup):
@@ -117,6 +118,7 @@ class RemnashopReferral(StatesGroup):
     MAIN = State()
     LEVEL = State()
     REWARD = State()
+    FRIEND_REWARD = State()
     REWARD_TYPE = State()
     ACCRUAL_STRATEGY = State()
     REWARD_STRATEGY = State()

@@ -97,9 +97,13 @@ class PlategaGateway(BasePaymentGateway):
         return payment_id, transaction_status
 
     async def _create_payment_payload(self, amount: Decimal, details: str) -> dict[str, Any]:
+        payment_method = self.data.settings.payment_method  # type: ignore[union-attr]
+        if payment_method is None:
+            payment_method = self.data.settings.payment_methods[0]  # type: ignore[union-attr]
+
         return {
             "command": {},
-            "paymentMethod": self.data.settings.payment_method,  # type: ignore[union-attr]
+            "paymentMethod": payment_method,
             "paymentDetails": {
                 "amount": float(amount),
                 "currency": self.data.currency.value,

@@ -810,7 +810,6 @@ msg-referral-main =
     • <b>Количество уровней</b>: { $referral_level }
     • <b>Условие начисления</b>: { accrual-strategy }
     • <b>Форма начисления</b>: { reward-strategy }
-    • <b>Награда другу</b>: { $friend_reward_days } дн.
     </blockquote>
 
     Выберите пункт для изменения.
@@ -879,11 +878,6 @@ msg-referral-reward =
         }
         *[OTHER] { $reward_strategy_type }
     } (в формате: уровень=значение)
-
-msg-referral-friend-reward =
-    <b>🎁 Награда другу</b>
-
-    Введите, сколько дней получит приглашённый пользователь после активации пробного периода.
 
 # Plans
 msg-plans-main = <b>📦 Планы</b>

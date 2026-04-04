@@ -310,7 +310,6 @@ btn-referral =
     .accrual-strategy = 📍 Условие начисления
     .reward-strategy = ⚖️ Форма начисления
     .reward = 🎁 Награда
-    .friend-reward = 🎁 Награда другу
     
     .enable = { $is_enable -> 
     [1] 🟢 Включена

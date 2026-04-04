@@ -22,6 +22,7 @@ btn-common =
 btn-devices =
     .delete-all = 🗑 Удалить все устройства
     .reissue = 🔄 Перевыпустить подписку
+    .buy-more = ➕ Докупить устройства
     .confirm-delete = ✅ Да, удалить
     .confirm-reissue = ✅ Да, сбросить
     .cancel-reissue = ❌ Нет
@@ -217,6 +218,20 @@ btn-promocodes =
     .create = 🆕 Создать
     .delete = 🗑️ Удалить
     .edit = ✏️ Редактировать
+    .my = 🎟 Мои промокоды
+    .title = { $code } { $is_active ->
+        [1] 🟢
+        *[0] 🔴
+    }
+    .code = 🏷 Название промокода
+    .discount = 💸 Процент скидки
+    .limit = 👥 Сколько людей может ввести
+    .expires = ⏳ Дата истечения
+    .active = { $is_active ->
+        [1] 🟢 Включен
+        *[0] 🔴 Выключен
+    }
+    .save = ✅ Сохранить
 
 btn-access =
     .mode = { access-mode }
@@ -269,6 +284,10 @@ btn-menu-editor =
 btn-gateway =
     .title = { gateway-type }
     .setting = { $field }
+    .platega-method = { $enabled ->
+    [1] 🔘 { $label }
+    *[0] ⚪ { $label }
+    }
     .webhook-copy = 📋 Скопировать вебхук
     .test = 🐞 Тест
     .default-currency = 💸 Валюта по умолчанию
@@ -450,9 +469,10 @@ btn-subscription =
     .plan = 💳 Перейти к оформлению подписки
     .new = 💸 Купить подписку
     .renew = 🔄 Продлить
-    .change = 🔃 Изменить
+    .change = ➕ Докупить трафик
     .promocode = 🎟 Активировать промокод
     .payment-method = { gateway-type } | { $price } { $currency }
+    .payment-method-option = { $label } | { $price } { $currency }
     .pay = 💳 Оплатить
     .get = 🎁 Получить бесплатно
     .back-plans = ⬅️ Назад к выбору плана

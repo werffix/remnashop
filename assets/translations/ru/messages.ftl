@@ -63,7 +63,6 @@ msg-menu-invite =
     <blockquote>
     👥 Всего приглашенных: { $referrals }
     💳 Платежей по вашей ссылке: { $payments }
-    ⏳ Заработано дней: { $reward_days }
     { $reward_type -> 
     [POINTS] 💎 Ваши баллы: { $points }
     *[EXTRA_DAYS] { empty }
@@ -1098,10 +1097,17 @@ msg-subscription-payment-method =
 
     { msg-subscription-details }
 
+msg-subscription-promocode =
+    <b>🎟 Введите промокод</b>
+
+    Отправьте текстом название промокода, чтобы применить скидку к текущей покупке.
+
 msg-subscription-confirm =
     <b>🛒 Подтверждение { $purchase_type ->
     [RENEW] продления
     [CHANGE] изменения
+    [TRAFFIC_TOPUP] докупки трафика
+    [DEVICE_TOPUP] докупки устройств
     *[OTHER] покупки
     } подписки</b>
 
@@ -1125,6 +1131,8 @@ msg-subscription-success =
     [NEW] { msg-subscription-new-success }
     [RENEW] { msg-subscription-renew-success }
     [CHANGE] { msg-subscription-change-success }
+    [TRAFFIC_TOPUP] { msg-subscription-traffic-topup-success }
+    [DEVICE_TOPUP] { msg-subscription-device-topup-success }
     *[OTHER] { $purchase_type }
     }
 
@@ -1132,6 +1140,16 @@ msg-subscription-change-success =
     Ваша подписка была изменена.
 
     <b>{ $plan_name }</b>
+    { frg-subscription }
+
+msg-subscription-traffic-topup-success =
+    Трафик по вашей подписке был увеличен.
+
+    { frg-subscription }
+
+msg-subscription-device-topup-success =
+    Лимит устройств по вашей подписке был увеличен.
+
     { frg-subscription }
 
 msg-subscription-failed = 
@@ -1199,31 +1217,53 @@ msg-importer-sync-completed =
 
 # Promocodes
 msg-promocodes-main = <b>🎟 Промокоды</b>
+msg-promocodes-list =
+    <b>🎟 Промокоды</b>
+
+    Выберите существующий промокод или создайте новый.
+
 msg-promocode-configurator =
     <b>🎟 Конфигуратор промокода</b>
 
     <blockquote>
     • <b>Код</b>: { $code }
-    • <b>Тип</b>: { promocode-type }
-    • <b>Доступ</b>: { availability-type }
-    • <b>Статус</b>: { $is_active -> 
+    • <b>Скидка</b>: { $discount_percent }%
+    • <b>Лимит активаций</b>: { $max_activations }
+    • <b>Срок действия</b>: { $expires_at }
+    • <b>Использований</b>: { $activations }
+    • <b>Статус</b>: { $is_active ->
         [1] 🟢 Включен
         *[0] 🔴 Выключен
-        }
-    </blockquote>
-
-    <blockquote>
-    { $promocode_type ->
-    [DURATION] • <b>Длительность</b>: { $reward }
-    [TRAFFIC] • <b>Трафик</b>: { $reward }
-    [DEVICES] • <b>Устройства</b>: { $reward }
-    [SUBSCRIPTION] • <b>Подписка</b>: { frg-plan-snapshot }
-    [PERSONAL_DISCOUNT] • <b>Персональная скидка</b>: { $reward }%
-    [PURCHASE_DISCOUNT] • <b>Скидка на покупку</b>: { $reward }%
-    *[OTHER] { $promocode_type }
     }
-    • <b>Срок действия</b>: { $lifetime }
-    • <b>Лимит активаций</b>: { $max_activations }
     </blockquote>
 
     Выберите пункт для изменения.
+
+msg-promocode-code =
+    <b>🏷 Название промокода</b>
+
+    Отправьте текстом код промокода.
+
+msg-promocode-discount =
+    <b>💸 Процент скидки</b>
+
+    Отправьте число от 1 до 100.
+
+msg-promocode-limit =
+    <b>👥 Сколько людей может ввести промокод</b>
+
+    Отправьте число больше 0.
+    Чтобы снять ограничение, отправьте <code>0</code> или <code>нет</code>.
+
+msg-promocode-expires =
+    <b>⏳ Дата истечения промокода</b>
+
+    Поддерживаемые форматы:
+    <blockquote>
+    • <code>2026-04-30</code>
+    • <code>2026-04-30 23:59</code>
+    • <code>30.04.2026</code>
+    • <code>30.04.2026 23:59</code>
+    </blockquote>
+
+    Чтобы убрать срок действия, отправьте <code>0</code> или <code>нет</code>.

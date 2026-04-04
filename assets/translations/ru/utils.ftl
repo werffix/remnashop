@@ -283,6 +283,8 @@ availability-type = { $availability_type ->
     [INVITED] Для приглашенных
     [ALLOWED] Для разрешенных
     [LINK] По ссылке
+    [TRAFFIC_TOPUP] Докупка трафика
+    [DEVICE_TOPUP] Докупка устройств
     *[OTHER] { $availability_type }
 }
 
@@ -351,6 +353,8 @@ purchase-type = { $purchase_type ->
     [NEW] Покупка
     [RENEW] Продление
     [CHANGE] Изменение
+    [TRAFFIC_TOPUP] Докупка трафика
+    [DEVICE_TOPUP] Докупка устройств
     *[OTHER] { $purchase_type }
 }
 

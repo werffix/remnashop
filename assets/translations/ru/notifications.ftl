@@ -118,6 +118,7 @@ ntf-plan =
 ntf-gateway =
     .not-configured = ❌ <i>Платежный шлюз не настроен.</i>
     .not-configurable = ❌ <i>У платежного шлюза отсутствуют настройки.</i>
+    .field-wrong-value = ❌ <i>Некорректное значение для настройки платежного шлюза.</i>
 
     .test-payment-created = ✅ <i><a href="{ $url }">Тестовый платеж</a> успешно создан.</i>
     .test-payment-error = ❌ <i>Ошибка при создании тестового платежа.</i>
@@ -128,6 +129,16 @@ ntf-subscription =
     .gateways-unavailable = ❌ <i>В данный момент нет доступных платежных систем.</i>
     .renew-plan-unavailable = ❌ <i>Текущий план устарел и недоступен для продления.</i>
     .payment-creation-failed = ❌ <i>Ошибка при создании платежа. Попробуйте позже.</i>
+
+ntf-promocode =
+    .invalid = ❌ <i>Промокод не найден или недоступен.</i>
+    .expired = ❌ <i>Срок действия промокода истёк.</i>
+    .limit-reached = ❌ <i>Лимит активаций этого промокода уже исчерпан.</i>
+    .already-used = ❌ <i>Вы уже использовали этот промокод.</i>
+    .applied = ✅ <i>Промокод <b>{ $code }</b> применён. Скидка: { $discount_percent }%.</i>
+    .created = ✅ <i>Промокод успешно создан.</i>
+    .updated = ✅ <i>Промокод успешно обновлён.</i>
+    .deleted = ✅ <i>Промокод удалён.</i>
 
 ntf-broadcast =
     .message = { $content }

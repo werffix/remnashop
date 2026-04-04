@@ -130,6 +130,40 @@ class PlategaGatewaySettingsDto(GatewaySettingsDto):
     merchant_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
     payment_method: Optional[int] = None
+    sbp_enabled: bool = False
+    card_enabled: bool = False
+    crypto_enabled: bool = False
+
+    @property
+    def hidden_fields(self) -> set[str]:
+        return {"payment_method", "sbp_enabled", "card_enabled", "crypto_enabled"}
+
+    @property
+    def is_configured(self) -> bool:
+        return (
+            self.merchant_id is not None
+            and self.api_key is not None
+            and bool(self.payment_methods)
+        )
+
+    @property
+    def payment_methods(self) -> list[int]:
+        methods: list[int] = []
+        if self.sbp_enabled:
+            methods.append(2)
+        if self.card_enabled:
+            methods.append(11)
+        if self.crypto_enabled:
+            methods.append(13)
+
+        if methods:
+            return methods
+
+        # Backward compatibility with legacy single-value configuration.
+        if self.payment_method in {2, 11, 13}:
+            return [self.payment_method]
+
+        return []
 
 
 @dataclass(kw_only=True)

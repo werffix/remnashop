@@ -38,6 +38,7 @@ class TransactionDto(BaseDto, TrackableMixin, TimestampMixin):
 
     purchase_type: PurchaseType
     gateway_type: PaymentGatewayType
+    promocode_id: int | None = None
 
     pricing: "PriceDetailsDto"
     currency: Currency

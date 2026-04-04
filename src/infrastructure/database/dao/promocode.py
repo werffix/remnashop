@@ -23,7 +23,7 @@ class PromocodeDaoImpl(PromocodeDao, BaseDaoImpl):
         conversion_retort: ConversionRetort,
         redis: Redis,
     ) -> None:
-        super().__init__(session, retort)
+        BaseDaoImpl.__init__(self, session, retort)
         self.conversion_retort = conversion_retort
         self.redis = redis
 

@@ -76,6 +76,8 @@ class PlanAvailability(UpperStrEnum):
     INVITED = auto()
     ALLOWED = auto()
     LINK = auto()
+    TRAFFIC_TOPUP = auto()
+    DEVICE_TOPUP = auto()
 
 
 class PaymentGatewayType(UpperStrEnum):
@@ -98,6 +100,8 @@ class PurchaseType(UpperStrEnum):
     NEW = auto()
     RENEW = auto()
     CHANGE = auto()
+    TRAFFIC_TOPUP = auto()
+    DEVICE_TOPUP = auto()
 
 
 class TransactionStatus(UpperStrEnum):

@@ -7,7 +7,13 @@ from src.core.enums import Currency
 
 
 class PricingService:
-    def calculate(self, user: UserDto, price: Decimal, currency: Currency) -> PriceDetailsDto:
+    def calculate(
+        self,
+        user: UserDto,
+        price: Decimal,
+        currency: Currency,
+        extra_discount_percent: int = 0,
+    ) -> PriceDetailsDto:
         logger.debug(
             f"Calculating price for amount '{price}' and currency "
             f"'{currency}' for user '{user.telegram_id}'"
@@ -21,7 +27,8 @@ class PricingService:
                 final_amount=Decimal(0),
             )
 
-        discount_percent = min(user.purchase_discount or user.personal_discount or 0, 100)
+        base_discount = user.purchase_discount or user.personal_discount or 0
+        discount_percent = min(max(base_discount, extra_discount_percent), 100)
 
         if discount_percent >= 100:
             logger.info(f"100% discount applied, price is free for user '{user.telegram_id}'")

@@ -80,6 +80,7 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
     async def _execute(self, actor: UserDto, data: ActivateTrialSubscriptionDto) -> None:
         user = data.user
         plan = data.plan
+        trial_completed = False
 
         logger.info(f"{actor.log} Started trial for user '{user.telegram_id}'")
 
@@ -124,8 +125,9 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
                 plan_duration=i18n_format_days(plan.duration),
             )
             await self.event_publisher.publish(event)
+            await self._assign_trial_bonus_to_referred_user(user)
             await self._assign_trial_referral_rewards(user, plan)
-            await self.redirect.to_success_trial(user.telegram_id)
+            trial_completed = True
             logger.info(
                 f"{actor.log} Trial subscription completed "
                 f"successfully for user '{user.telegram_id}'"
@@ -135,6 +137,27 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
             logger.exception(f"{actor.log} Failed to give trial for user '{user.telegram_id}'")
             await self.redirect.to_failed_payment(user.telegram_id)
             raise TrialError(e)
+
+        if trial_completed:
+            await self.redirect.to_success_trial(user.telegram_id)
+
+    async def _assign_trial_bonus_to_referred_user(self, user: UserDto) -> None:
+        settings = await self.settings_dao.get()
+        friend_reward_days = settings.referral.friend_reward_days
+
+        if friend_reward_days <= 0:
+            return
+
+        referral, _ = await self.referral_dao.get_referral_chain(user.telegram_id)
+        if not referral:
+            return
+
+        await self.add_subscription_duration.system(
+            AddSubscriptionDurationDto(
+                telegram_id=user.telegram_id,
+                days=friend_reward_days,
+            )
+        )
 
     async def _assign_trial_referral_rewards(
         self,
@@ -294,6 +317,7 @@ class PurchaseSubscription(Interactor[PurchaseSubscriptionDto, None]):
             f"for user '{user.telegram_id}'"
         )
 
+        purchase_completed = False
         async with self.uow:
             try:
                 # 1. NEW PURCHASE (NOT TRIAL)
@@ -436,7 +460,7 @@ class PurchaseSubscription(Interactor[PurchaseSubscriptionDto, None]):
                         f"Unknown purchase type '{purchase_type}' for user '{user.telegram_id}'"
                     )
 
-                await self.redirect.to_success_payment(user.telegram_id, purchase_type)
+                purchase_completed = True
                 logger.info(
                     f"{actor.log} Purchase subscription completed for user '{user.telegram_id}'"
                 )
@@ -455,6 +479,9 @@ class PurchaseSubscription(Interactor[PurchaseSubscriptionDto, None]):
 
                 await self.redirect.to_failed_payment(user.telegram_id)
                 raise PurchaseError(e)
+
+        if purchase_completed:
+            await self.redirect.to_success_payment(user.telegram_id, purchase_type)
 
     def _build_subscription_dto(
         self,

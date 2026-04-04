@@ -170,3 +170,27 @@ class UpdateReferralRewardConfig(Interactor[str, None]):
         logger.info(
             f"{actor.log} Updated referral reward config from '{old_config_str}' to '{new_config}'"
         )
+
+
+class UpdateReferralFriendRewardDays(Interactor[int, None]):
+    required_permission = Permission.SETTINGS_REFERRAL
+
+    def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
+        self.uow = uow
+        self.settings_dao = settings_dao
+
+    async def _execute(self, actor: UserDto, friend_reward_days: int) -> None:
+        if friend_reward_days < 0:
+            raise ValueError("Friend reward days cannot be negative")
+
+        async with self.uow:
+            settings = await self.settings_dao.get()
+            old_value = settings.referral.friend_reward_days
+            settings.referral.friend_reward_days = friend_reward_days
+            await self.settings_dao.update(settings)
+            await self.uow.commit()
+
+        logger.info(
+            f"{actor.log} Updated referral friend reward days "
+            f"from '{old_value}' to '{friend_reward_days}'"
+        )

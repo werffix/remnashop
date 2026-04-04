@@ -357,17 +357,14 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
             PurchaseSubscriptionDto(user, transaction, subscription)
         )
 
-        if transaction.promocode_id:
-            already_activated = await self.promocode_dao.has_user_activation(
-                transaction.promocode_id,
-                user.telegram_id,
+        if transaction.promocode_id and not await self.promocode_dao.has_activation_for_transaction(
+            transaction.payment_id
+        ):
+            await self.promocode_dao.create_activation(
+                promocode_id=transaction.promocode_id,
+                user_telegram_id=user.telegram_id,
+                transaction_payment_id=transaction.payment_id,
             )
-            if not already_activated:
-                await self.promocode_dao.create_activation(
-                    promocode_id=transaction.promocode_id,
-                    user_telegram_id=user.telegram_id,
-                    transaction_payment_id=transaction.payment_id,
-                )
 
         if not transaction.pricing.is_free:
             await self.assign_referral_rewards.system(AssignReferralRewardsDto(user, transaction))

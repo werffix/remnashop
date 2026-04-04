@@ -24,7 +24,6 @@ from .getters import (
 from .handlers import (
     on_accrual_strategy_select,
     on_enable_toggle,
-    on_friend_reward_input,
     on_level_select,
     on_reward_input,
     on_reward_select,
@@ -72,11 +71,6 @@ referral = Window(
             text=I18nFormat("btn-referral.reward"),
             id="reward",
             state=RemnashopReferral.REWARD,
-        ),
-        SwitchTo(
-            text=I18nFormat("btn-referral.friend-reward"),
-            id="friend_reward",
-            state=RemnashopReferral.FRIEND_REWARD,
         ),
     ),
     Row(
@@ -158,21 +152,6 @@ reward = Window(
     getter=reward_getter,
 )
 
-friend_reward = Window(
-    Banner(BannerName.DASHBOARD),
-    I18nFormat("msg-referral-friend-reward"),
-    Row(
-        SwitchTo(
-            text=I18nFormat("btn-back.general"),
-            id="back",
-            state=RemnashopReferral.MAIN,
-        ),
-    ),
-    MessageInput(func=on_friend_reward_input),
-    IgnoreUpdate(),
-    state=RemnashopReferral.FRIEND_REWARD,
-)
-
 accrual_strategy = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-referral-accrual-strategy"),
@@ -230,5 +209,4 @@ router = Dialog(
     accrual_strategy,
     reward_strategy,
     reward,
-    friend_reward,
 )
